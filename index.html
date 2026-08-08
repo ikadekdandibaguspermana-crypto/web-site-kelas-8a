@@ -312,6 +312,9 @@
   }
   .roster-card:hover .roster-id{ background:var(--gold); }
   .roster-card span{ font-size:12.5px; color:var(--text-mid); font-weight:500; line-height:1.3; }
+  .roster-info{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .roster-pin{ font-family:var(--font-mono); font-size:9.5px; color:var(--teal); letter-spacing:0.5px; }
+  .pin-tag{ font-family:var(--font-mono); font-size:9.5px; color:var(--teal); letter-spacing:0.5px; margin-top:4px; }
 
   /* ============ ABSENSI ============ */
   .absen-controls{
@@ -655,12 +658,16 @@
   <div class="login-box">
     <div class="login-patch">AV</div>
     <h2 id="loginTitle">Masuk ke Aventra Class</h2>
-    <p class="sub" id="loginSub">Masukkan nama kamu persis seperti pada daftar absensi.</p>
+    <p class="sub" id="loginSub">Masukkan nama dan PIN kamu persis seperti pada daftar absensi.</p>
 
     <div id="loginFormStudent">
       <div class="login-field">
         <label for="loginName">Nama Lengkap / Panggilan</label>
         <input type="text" id="loginName" autocomplete="off" placeholder="Contoh: David">
+      </div>
+      <div class="login-field">
+        <label for="loginPin">PIN Kamu</label>
+        <input type="password" id="loginPin" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="4 digit angka">
       </div>
     </div>
 
@@ -932,6 +939,26 @@
   const ADMIN_PASSWORD = "admin554";
   const SESSION_KEY = "aventraSession";
 
+  // PIN unik per anggota (angka acak 4 digit) — dipakai bersama nama saat login.
+  // Ditampilkan di bawah setiap nama pada Daftar Anggota Kelas & struktur pengurus
+  // supaya masing-masing tahu PIN mereka sendiri. Admin tidak memakai PIN ini.
+  const studentPins = {
+    "Ni Ketut Nindia Candra Dewi": "9837",
+    "I Ketut Anna Ary Sudana Putra": "1553",
+    "Ni Luh Putu Laksmi Pradnyaswari": "6638",
+    "I Made Bayu Pastika Putra": "3209",
+    "I Gusti Ayu Kadek Sulaksmi": "1444",
+    "I Gusti Lanang Agung Putra Wedhana": "4979",
+    "Casey": "9144", "Redi": "4370", "Rizki": "1546", "Alit Payama": "8615",
+    "Novi": "3212", "Ary": "2395",
+    "Dek Adi": "9128", "Candra": "6884", "Dandi Bagus": "1921", "Prabu": "7768",
+    "Alit": "8484", "Cipta": "7209", "David": "5795",
+    "Resta": "3065", "Awan": "8164", "Diah": "2704",
+    "Gus Dwik": "2892", "Cahya Aprianti": "2782",
+    "April": "4882", "Meisya": "9932", "Rastia": "8169", "Mang Cahya": "1286",
+    "Desita": "4883", "Damay": "5556", "Felii": "8277", "Aldo": "6544"
+  };
+
   // Full roster used both for the "Daftar Anggota Kelas" grid and as the
   // master name list for login + absensi (kept in sync so the name typed
   // at login always matches a real row in absensi).
@@ -943,7 +970,7 @@
     "Resta","Awan","Diah",
     "Gus Dwik","Cahya Aprianti",
     "April","Meisya","Rastia","Mang Cahya",
-    "Desita","Damay","Feli","Aldo"
+    "Desita","Damay","Felii","Aldo"
   ];
 
   // Pengurus inti — nama lengkap disamakan dengan kartu profil di atas
@@ -951,7 +978,7 @@
   const pengurus = [
     { name: "Ni Ketut Nindia Candra Dewi", jabatan: "Ketua Kelas" },
     { name: "I Ketut Anna Ary Sudana Putra", jabatan: "Wakil Ketua" },
-    { name: "Luh Putu Laksmi Pradnyaswari", jabatan: "Sekretaris 1" },
+    { name: "Ni Luh Putu Laksmi Pradnyaswari", jabatan: "Sekretaris 1" },
     { name: "I Made Bayu Pastika Putra", jabatan: "Sekretaris 2" },
     { name: "I Gusti Ayu Kadek Sulaksmi", jabatan: "Bendahara 1" },
     { name: "I Gusti Lanang Agung Putra Wedhana", jabatan: "Bendahara 2" }
@@ -986,6 +1013,7 @@
   const loginFormStudent = document.getElementById('loginFormStudent');
   const loginFormAdmin = document.getElementById('loginFormAdmin');
   const loginName = document.getElementById('loginName');
+  const loginPin = document.getElementById('loginPin');
   const loginAdminPass = document.getElementById('loginAdminPass');
   const loginSubmit = document.getElementById('loginSubmit');
   const loginError = document.getElementById('loginError');
@@ -1008,7 +1036,7 @@
       loginAdminPass.focus();
     } else {
       loginTitle.textContent = 'Masuk ke Aventra Class';
-      loginSub.textContent = 'Masukkan nama kamu persis seperti pada daftar absensi.';
+      loginSub.textContent = 'Masukkan nama dan PIN kamu persis seperti pada daftar absensi.';
       loginFormStudent.style.display = 'block';
       loginFormAdmin.style.display = 'none';
       loginToggle.textContent = 'Masuk sebagai Admin';
@@ -1027,16 +1055,22 @@
       }
     } else {
       const student = findStudentByName(loginName.value);
-      if (student) {
+      if (!student) {
+        loginError.textContent = 'Nama tidak ditemukan di daftar absensi. Periksa ejaan nama kamu.';
+        return;
+      }
+      const correctPin = studentPins[student.name];
+      if (correctPin && loginPin.value.trim() === correctPin) {
         saveSession({ role: 'student', name: student.name });
         enterSite();
       } else {
-        loginError.textContent = 'Nama tidak ditemukan di daftar absensi. Periksa ejaan nama kamu.';
+        loginError.textContent = 'PIN salah. Cek kembali PIN kamu di Daftar Anggota Kelas.';
       }
     }
   }
   loginSubmit.addEventListener('click', doLogin);
   loginName.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  loginPin.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
   loginAdminPass.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
   function enterSite() {
@@ -1044,14 +1078,20 @@
     loginGate.classList.add('hidden');
     sessionBadge.style.display = 'flex';
     sessionName.textContent = session.role === 'admin' ? 'Admin' : session.name;
+    // Hanya admin yang boleh logout & berpindah akun. Murid yang sudah masuk
+    // dengan nama+PIN mereka terkunci pada sesi itu sampai tab/browser ditutup.
+    logoutBtn.style.display = session.role === 'admin' ? 'inline-block' : 'none';
     renderAbsensi();
   }
 
   logoutBtn.addEventListener('click', () => {
+    const session = loadSession();
+    if (!session || session.role !== 'admin') return; // jaga-jaga: murid tak bisa logout
     clearSession();
     loginGate.classList.remove('hidden');
     sessionBadge.style.display = 'none';
     loginName.value = '';
+    loginPin.value = '';
     loginAdminPass.value = '';
   });
 
@@ -1062,8 +1102,23 @@
     const card = document.createElement('div');
     card.className = 'roster-card stagger-item';
     const num = String(i + 1).padStart(2, '0'); // nomor absen anggota, dimulai dari 01
-    card.innerHTML = `<div class="roster-id">${num}</div><span>${name}</span>`;
+    const pin = studentPins[name] || '----';
+    card.innerHTML = `<div class="roster-id">${num}</div><div class="roster-info"><span>${name}</span><span class="roster-pin">PIN: ${pin}</span></div>`;
     rosterGrid.appendChild(card);
+  });
+
+  // ---------- PIN untuk kartu pengurus inti (markup sudah ada di HTML) ----------
+  pengurus.forEach(p => {
+    const pin = studentPins[p.name];
+    if (!pin) return;
+    const heading = Array.from(document.querySelectorAll('.lead-info h3, .officer-card h4'))
+      .find(el => el.textContent.trim() === p.name);
+    if (heading && !heading.nextElementSibling?.classList.contains('pin-tag')) {
+      const tag = document.createElement('div');
+      tag.className = 'pin-tag';
+      tag.textContent = `PIN: ${pin}`;
+      heading.insertAdjacentElement('afterend', tag);
+    }
   });
 
   // ---------- Gallery placeholders ----------
