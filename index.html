@@ -371,10 +371,72 @@
   }
   .absen-note.show{ opacity:1; }
 
+  .rekap-btn{
+    font-family:var(--font-mono); font-size:11px; color:var(--bg-void); font-weight:600;
+    border:1px solid var(--teal); background:var(--teal); padding:11px 18px; border-radius:999px;
+    cursor:pointer; transition:all 0.25s ease; display:none;
+  }
+  .rekap-btn:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
+
   @media (max-width:640px){
     .absen-summary{ margin-left:0; }
     .absen-row{ flex-wrap:wrap; }
     .absen-btns{ width:100%; justify-content:flex-start; margin-top:4px; }
+  }
+
+  /* ============ REKAP BULANAN (modal) ============ */
+  .rekap-modal{
+    position:fixed; inset:0; z-index:210; background:rgba(6,8,16,0.92); backdrop-filter:blur(6px);
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  .rekap-modal.open{ display:flex; }
+  .rekap-panel{
+    position:relative; width:min(900px,94vw); max-height:86vh; overflow-y:auto;
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:var(--radius-lg);
+    padding:36px 32px;
+  }
+  .rekap-close{
+    position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:50%;
+    border:1px solid var(--line-soft); background:rgba(255,255,255,0.05); color:var(--text-hi);
+    font-size:16px; cursor:pointer; flex-shrink:0;
+  }
+  .rekap-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; padding-right:44px; flex-wrap:wrap; }
+  .rekap-head h3{ font-family:var(--font-display); font-size:23px; margin-top:4px; }
+  .rekap-download{
+    font-family:var(--font-mono); font-size:11px; color:var(--bg-void); font-weight:600;
+    background:var(--gold); border:1px solid var(--gold); padding:11px 18px; border-radius:999px; cursor:pointer;
+    transition:all 0.25s ease; white-space:nowrap;
+  }
+  .rekap-download:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
+  .rekap-download:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  .rekap-loading, .rekap-empty{ color:var(--text-mid); font-size:13.5px; text-align:center; padding:50px 10px; }
+
+  .rekap-table-wrap{ overflow-x:auto; border:1px solid var(--line-soft); border-radius:14px; }
+  .rekap-table{ width:100%; border-collapse:collapse; min-width:660px; }
+  .rekap-table th, .rekap-table td{
+    padding:12px 14px; text-align:left; font-size:12.5px; border-bottom:1px solid var(--line-soft); white-space:nowrap;
+  }
+  .rekap-table th{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:1px; text-transform:uppercase;
+    color:var(--text-low); background:var(--bg-panel-hi); position:sticky; top:0;
+  }
+  .rekap-table tbody tr:hover{ background:var(--bg-panel-hi); }
+  .rekap-table tbody tr:last-child td{ border-bottom:none; }
+  .rekap-table td:nth-child(2){ min-width:180px; white-space:normal; }
+  .rekap-jab{ font-family:var(--font-mono); font-size:9px; color:var(--teal); text-transform:uppercase; letter-spacing:1px; margin-left:6px; }
+  .rekap-table .c-h{ color:var(--teal); font-weight:600; }
+  .rekap-table .c-s{ color:var(--gold); font-weight:600; }
+  .rekap-table .c-i{ color:#8ea1ff; font-weight:600; }
+  .rekap-table .c-a{ color:#ff6a6a; font-weight:600; }
+
+  .rekap-foot{ margin-top:16px; }
+  .rekap-note{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-low); }
+
+  @media (max-width:640px){
+    .rekap-panel{ padding:26px 18px; }
+    .rekap-head{ padding-right:36px; }
+    .rekap-download{ width:100%; text-align:center; }
   }
 
   /* ============ KEGIATAN — Gallery ============ */
@@ -758,6 +820,7 @@
     <select class="absen-month" id="absenMonth"></select>
     <input type="date" class="absen-date" id="absenDate">
     <button class="absen-reset" id="absenReset">Reset Tanggal Ini</button>
+    <button class="rekap-btn" id="rekapBtn">Rekap Bulanan</button>
     <div class="absen-summary" id="absenSummary">
       <span class="absen-chip hadir"><span class="dot"></span>Hadir <b id="cntH">0</b></span>
       <span class="absen-chip sakit"><span class="dot"></span>Sakit <b id="cntS">0</b></span>
@@ -809,6 +872,37 @@
     <span id="lbLabel">FOTO-01.JPG</span>
   </div>
   <p class="lb-caption" id="lbCaption">Ganti elemen ini dengan foto kegiatan asli kelas kalian.</p>
+</div>
+
+<!-- ================= REKAP BULANAN (MODAL) ================= -->
+<div class="rekap-modal" id="rekapModal">
+  <div class="rekap-panel">
+    <button class="rekap-close" id="rekapClose">✕</button>
+    <div class="rekap-head">
+      <div>
+        <div class="eyebrow" style="margin-bottom:6px;">Rekap Kehadiran</div>
+        <h3 id="rekapTitle">-</h3>
+      </div>
+      <button class="rekap-download" id="rekapDownload" disabled>Unduh CSV</button>
+    </div>
+    <div id="rekapBody">
+      <p class="rekap-loading" id="rekapLoading">Memuat data...</p>
+      <div class="rekap-table-wrap" id="rekapTableWrap" style="display:none;">
+        <table class="rekap-table">
+          <thead>
+            <tr>
+              <th>No</th><th>Nama</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Belum Tercatat</th><th>% Hadir</th>
+            </tr>
+          </thead>
+          <tbody id="rekapTbody"></tbody>
+        </table>
+      </div>
+      <p class="rekap-empty" id="rekapEmpty" style="display:none;"></p>
+    </div>
+    <div class="rekap-foot">
+      <span class="rekap-note" id="rekapDaysNote"></span>
+    </div>
+  </div>
 </div>
 
 <!-- ================= FOOTER ================= -->
@@ -1200,6 +1294,8 @@
       ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
       : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`;
 
+    rekapBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+
     const visibleStudents = isAdmin
       ? kelasLengkap
       : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
@@ -1269,6 +1365,130 @@
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => absenNote.classList.remove('show'), 1600);
   }
+
+  // ================= REKAP BULANAN =================
+  const rekapBtn = document.getElementById('rekapBtn');
+  const rekapModal = document.getElementById('rekapModal');
+  const rekapClose = document.getElementById('rekapClose');
+  const rekapTitle = document.getElementById('rekapTitle');
+  const rekapLoading = document.getElementById('rekapLoading');
+  const rekapTableWrap = document.getElementById('rekapTableWrap');
+  const rekapTbody = document.getElementById('rekapTbody');
+  const rekapEmpty = document.getElementById('rekapEmpty');
+  const rekapDownload = document.getElementById('rekapDownload');
+  const rekapDaysNote = document.getElementById('rekapDaysNote');
+
+  let rekapCurrentData = null; // dipakai saat export CSV
+
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); } // m: 1-12
+
+  async function openRekap() {
+    const session = currentSessionInfo();
+    if (session.role !== 'admin') return; // rekap hanya untuk admin
+
+    const monthVal = absenMonthSelect.value; // format "YYYY-MM"
+    const [y, m] = monthVal.split('-').map(Number);
+    rekapTitle.textContent = `${bulanNama[m - 1]} ${y}`;
+    rekapDaysNote.textContent = '';
+    rekapCurrentData = null;
+
+    rekapModal.classList.add('open');
+    rekapLoading.style.display = 'block';
+    rekapLoading.textContent = 'Memuat data...';
+    rekapTableWrap.style.display = 'none';
+    rekapEmpty.style.display = 'none';
+    rekapDownload.disabled = true;
+
+    const startId = `${monthVal}-01`;
+    const endId = `${monthVal}-${pad2(daysInMonth(y, m))}`;
+
+    try {
+      const snap = await db.collection('absensi')
+        .where(firebase.firestore.FieldPath.documentId(), '>=', startId)
+        .where(firebase.firestore.FieldPath.documentId(), '<=', endId)
+        .get();
+
+      rekapLoading.style.display = 'none';
+
+      if (snap.empty) {
+        rekapEmpty.textContent = 'Belum ada data absensi tercatat pada bulan ini.';
+        rekapEmpty.style.display = 'block';
+        return;
+      }
+
+      const recordedDays = snap.size;
+      const counts = {}; // nama -> {H,S,I,A}
+      kelasLengkap.forEach(s => { counts[s.name] = { H: 0, S: 0, I: 0, A: 0 }; });
+
+      snap.forEach(doc => {
+        const dayData = doc.data();
+        kelasLengkap.forEach(s => {
+          const st = dayData[s.name];
+          if (st && counts[s.name][st] !== undefined) counts[s.name][st]++;
+        });
+      });
+
+      rekapTbody.innerHTML = '';
+      const rowsForCsv = [];
+      kelasLengkap.forEach((s, i) => {
+        const c = counts[s.name];
+        const tercatat = c.H + c.S + c.I + c.A;
+        const belum = Math.max(recordedDays - tercatat, 0);
+        const pct = recordedDays > 0 ? Math.round((c.H / recordedDays) * 100) : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${String(i + 1).padStart(2, '0')}</td>
+          <td>${s.name}${s.jabatan ? ` <span class="rekap-jab">${s.jabatan}</span>` : ''}</td>
+          <td class="c-h">${c.H}</td>
+          <td class="c-s">${c.S}</td>
+          <td class="c-i">${c.I}</td>
+          <td class="c-a">${c.A}</td>
+          <td>${belum}</td>
+          <td>${pct}%</td>
+        `;
+        rekapTbody.appendChild(tr);
+        rowsForCsv.push({ no: i + 1, nama: s.name, H: c.H, S: c.S, I: c.I, A: c.A, belum, pct });
+      });
+
+      rekapTableWrap.style.display = 'block';
+      rekapDaysNote.textContent = `${recordedDays} hari tercatat dari ${daysInMonth(y, m)} hari total di bulan ini.`;
+      rekapDownload.disabled = false;
+      rekapCurrentData = {
+        monthLabel: `${bulanNama[m - 1]}_${y}`.toLowerCase(),
+        rows: rowsForCsv
+      };
+    } catch (e) {
+      console.error(e);
+      rekapLoading.style.display = 'none';
+      rekapEmpty.textContent = 'Gagal memuat data rekap. Cek koneksi internet lalu coba lagi.';
+      rekapEmpty.style.display = 'block';
+    }
+  }
+
+  rekapBtn.addEventListener('click', openRekap);
+  rekapClose.addEventListener('click', () => rekapModal.classList.remove('open'));
+  rekapModal.addEventListener('click', (e) => { if (e.target === rekapModal) rekapModal.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') rekapModal.classList.remove('open'); });
+
+  rekapDownload.addEventListener('click', () => {
+    if (!rekapCurrentData) return;
+    const header = ['No', 'Nama', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Belum Tercatat', '% Hadir'];
+    const lines = [header.join(',')];
+    rekapCurrentData.rows.forEach(r => {
+      lines.push([r.no, `"${r.nama}"`, r.H, r.S, r.I, r.A, r.belum, `${r.pct}%`].join(','));
+    });
+    const csvContent = lines.join('\r\n');
+    // \ufeff (BOM) supaya karakter tetap benar saat dibuka di Excel
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rekap-absensi-${rekapCurrentData.monthLabel}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 
   absenResetBtn.addEventListener('click', async () => {
     const session = currentSessionInfo();
