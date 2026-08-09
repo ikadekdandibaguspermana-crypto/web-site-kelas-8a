@@ -734,10 +734,11 @@
     }
     pengumumanEmpty.style.display = 'none';
     const admin = canManageInfo();
-    snap.forEach(doc => {
+    snap.forEach((doc, i) => {
       const d = doc.data();
       const item = document.createElement('div');
-      item.className = 'pengumuman-item stagger-item in';
+      item.className = 'pengumuman-item';
+      item.style.transitionDelay = Math.min(i * 40, 320) + 'ms';
       item.innerHTML = `
         <div class="pu-dot"></div>
         <div class="pu-body">
@@ -755,6 +756,9 @@
         });
       }
       pengumumanList.appendChild(item);
+    });
+    requestAnimationFrame(() => {
+      pengumumanList.querySelectorAll('.pengumuman-item').forEach(el => el.classList.add('in'));
     });
   }
 
@@ -795,10 +799,11 @@
       ? 'Klik "+" untuk menambah mata pelajaran pada tiap hari. Tersimpan otomatis ke server.'
       : 'Jadwal mata pelajaran mingguan kelas Aventra. Tersinkron otomatis ke semua perangkat.';
     jadwalGrid.innerHTML = '';
-    hariList.forEach(hari => {
+    hariList.forEach((hari, colIdx) => {
       const entries = (jadwalCurrentData[hari] || []);
       const col = document.createElement('div');
-      col.className = 'jadwal-day stagger-item in';
+      col.className = 'jadwal-day';
+      col.style.transitionDelay = (colIdx * 60) + 'ms';
       let entriesHtml = '';
       if (entries.length === 0) {
         entriesHtml = '<span class="jadwal-empty-day">Belum ada jadwal</span>';
@@ -822,6 +827,9 @@
         ` : ''}
       `;
       jadwalGrid.appendChild(col);
+    });
+    requestAnimationFrame(() => {
+      jadwalGrid.querySelectorAll('.jadwal-day').forEach(el => el.classList.add('in'));
     });
 
     if (admin) {
@@ -881,14 +889,15 @@
     agendaEmpty.style.display = 'none';
     const admin = canManageInfo();
     const todayId = todayStr();
-    snap.forEach(doc => {
+    snap.forEach((doc, i) => {
       const d = doc.data();
       const isPast = d.date && d.date < todayId;
       const dateParts = (d.date || '').split('-'); // YYYY-MM-DD
       const dayNum = dateParts[2] || '--';
       const monLabel = dateParts[1] ? bulanSingkat[parseInt(dateParts[1], 10) - 1] : '';
       const item = document.createElement('div');
-      item.className = 'agenda-item stagger-item in' + (isPast ? ' past' : '');
+      item.className = 'agenda-item' + (isPast ? ' past' : '');
+      item.style.transitionDelay = Math.min(i * 40, 320) + 'ms';
       item.innerHTML = `
         <div class="agenda-date"><span class="ag-day">${dayNum}</span>${monLabel}</div>
         <div class="agenda-body">
@@ -907,6 +916,9 @@
         });
       }
       agendaList.appendChild(item);
+    });
+    requestAnimationFrame(() => {
+      agendaList.querySelectorAll('.agenda-item').forEach(el => el.classList.add('in'));
     });
   }
 
