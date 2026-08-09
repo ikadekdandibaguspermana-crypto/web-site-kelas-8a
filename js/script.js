@@ -709,11 +709,13 @@
   const pengumumanList = document.getElementById('pengumumanList');
   const pengumumanEmpty = document.getElementById('pengumumanEmpty');
 
-  function formatTanggalWaktu(ts) {
-    if (!ts || !ts.toDate) return '';
-    const d = ts.toDate();
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) +
-      ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  function formatTanggalWaktu(d) {
+    let dateObj = null;
+    if (d && d.createdAt && d.createdAt.toDate) dateObj = d.createdAt.toDate();
+    else if (d && d.createdAtMs) dateObj = new Date(d.createdAtMs);
+    if (!dateObj) return 'Baru saja';
+    return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) +
+      ' · ' + dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   }
 
   function renderPengumuman(snap) {
@@ -732,7 +734,7 @@
         <div class="pu-dot"></div>
         <div class="pu-body">
           <div class="pu-text"></div>
-          <div class="pu-meta">${formatTanggalWaktu(d.createdAt)}</div>
+          <div class="pu-meta">${formatTanggalWaktu(d)}</div>
         </div>
         ${admin ? '<button class="pu-del">Hapus</button>' : ''}
       `;
@@ -749,7 +751,7 @@
   }
 
   function listenPengumuman() {
-    db.collection('pengumuman').orderBy('createdAt', 'desc').limit(50)
+    db.collection('pengumuman').orderBy('createdAtMs', 'desc').limit(50)
       .onSnapshot(renderPengumuman, (err) => console.error('pengumuman:', err));
   }
 
@@ -761,6 +763,7 @@
     try {
       await db.collection('pengumuman').add({
         text,
+        createdAtMs: Date.now(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       pengumumanInput.value = '';
