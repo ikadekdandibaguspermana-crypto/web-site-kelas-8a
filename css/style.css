@@ -146,6 +146,7 @@
     .nav-links, .nav-cta{ display:none; }
     .nav-burger{ display:flex; }
     .theme-toggle{ margin-left:auto; }
+    nav{ width:auto; }
   }
 
   /* ============ LOAD-IN SEQUENCE ============ */
