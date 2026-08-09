@@ -701,6 +701,14 @@
     const s = currentSessionInfo();
     return s.role === 'admin';
   }
+  // Pengurus inti (Ketua/Wakil/Sekretaris/Bendahara) boleh kelola Pengumuman,
+  // Jadwal, dan Agenda — tapi tetap seperti murid biasa untuk Absensi (hanya
+  // tandai dirinya sendiri) dan tidak bisa akses Rekap/Reset Absensi (admin saja).
+  function canManageInfo() {
+    const s = currentSessionInfo();
+    return s.role === 'admin' || s.role === 'pengurus';
+  }
+
 
   // ================= PAPAN PENGUMUMAN =================
   const pengumumanComposer = document.getElementById('pengumumanComposer');
@@ -725,7 +733,7 @@
       return;
     }
     pengumumanEmpty.style.display = 'none';
-    const admin = isCurrentlyAdmin();
+    const admin = canManageInfo();
     snap.forEach(doc => {
       const d = doc.data();
       const item = document.createElement('div');
@@ -756,7 +764,7 @@
   }
 
   pengumumanSubmit.addEventListener('click', async () => {
-    if (!isCurrentlyAdmin()) return;
+    if (!canManageInfo()) return;
     const text = pengumumanInput.value.trim();
     if (!text) return;
     pengumumanSubmit.disabled = true;
@@ -782,7 +790,7 @@
   let jadwalCurrentData = {};
 
   function renderJadwal() {
-    const admin = isCurrentlyAdmin();
+    const admin = canManageInfo();
     jadwalSubText.textContent = admin
       ? 'Klik "+" untuk menambah mata pelajaran pada tiap hari. Tersimpan otomatis ke server.'
       : 'Jadwal mata pelajaran mingguan kelas Aventra. Tersinkron otomatis ke semua perangkat.';
@@ -871,7 +879,7 @@
       return;
     }
     agendaEmpty.style.display = 'none';
-    const admin = isCurrentlyAdmin();
+    const admin = canManageInfo();
     const todayId = todayStr();
     snap.forEach(doc => {
       const d = doc.data();
@@ -908,7 +916,7 @@
   }
 
   agendaSubmit.addEventListener('click', async () => {
-    if (!isCurrentlyAdmin()) return;
+    if (!canManageInfo()) return;
     const title = agendaTitleInput.value.trim();
     const date = agendaDateInput.value;
     const note = agendaNoteInput.value.trim();
@@ -927,17 +935,22 @@
     agendaSubmit.disabled = false;
   });
 
-  // ---------- Tampilkan composer khusus admin & mulai listener setelah login ----------
+  // ---------- Tampilkan composer khusus admin/pengurus & mulai listener setelah login ----------
   const _originalEnterSite = enterSite;
   function enterSiteWithExtras() {
     _originalEnterSite();
-    const admin = isCurrentlyAdmin();
-    pengumumanComposer.style.display = admin ? 'flex' : 'none';
-    agendaComposer.style.display = admin ? 'flex' : 'none';
+    const manage = canManageInfo();
+    pengumumanComposer.style.display = manage ? 'flex' : 'none';
+    agendaComposer.style.display = manage ? 'flex' : 'none';
     listenPengumuman();
     listenJadwal();
     listenAgenda();
   }
+  // Nama pengurus inti (dari array `pengurus` yang sudah ada) dipakai untuk
+  // menandai sesi mereka sebagai role 'pengurus' saat login — dapat akses
+  // kelola Pengumuman/Jadwal/Agenda, tapi tetap seperti murid biasa untuk
+  // Absensi (hanya bisa tandai dirinya sendiri, tidak bisa rekap/reset).
+  const pengurusNameSet = new Set(pengurus.map(p => p.name.trim().toLowerCase()));
   // Sambungkan ulang tombol login & init-session supaya memakai versi "with extras"
   // tanpa mengubah fungsi enterSite asli maupun listener yang sudah terpasang.
   loginSubmit.removeEventListener('click', doLogin);
@@ -958,7 +971,8 @@
       }
       const correctPin = studentPins[student.name];
       if (correctPin && loginPin.value.trim() === correctPin) {
-        saveSession({ role: 'student', name: student.name });
+        const role = pengurusNameSet.has(student.name.trim().toLowerCase()) ? 'pengurus' : 'student';
+        saveSession({ role, name: student.name });
         enterSiteWithExtras();
       } else {
         loginError.textContent = 'PIN salah. Cek kembali PIN kamu di Daftar Anggota Kelas.';
@@ -975,9 +989,9 @@
   // Jika sesi sudah aktif saat halaman dimuat (initSession sudah memanggil
   // enterSite asli di atas), pastikan fitur tambahan tetap menyala juga.
   if (loadSession()) {
-    const admin = isCurrentlyAdmin();
-    pengumumanComposer.style.display = admin ? 'flex' : 'none';
-    agendaComposer.style.display = admin ? 'flex' : 'none';
+    const manage = canManageInfo();
+    pengumumanComposer.style.display = manage ? 'flex' : 'none';
+    agendaComposer.style.display = manage ? 'flex' : 'none';
     listenPengumuman();
     listenJadwal();
     listenAgenda();
