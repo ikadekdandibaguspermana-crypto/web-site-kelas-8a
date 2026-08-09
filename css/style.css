@@ -65,12 +65,12 @@
     width:100%; max-width:1080px;
     display:flex; align-items:center; justify-content:space-between;
     padding:12px 14px 12px 20px;
-    background:rgba(23,29,53,0.72);
+    background:rgba(15,19,35,0.92);
     border:1px solid var(--line-soft);
     border-radius:999px;
-    backdrop-filter:blur(18px) saturate(140%);
-    -webkit-backdrop-filter:blur(18px) saturate(140%);
-    box-shadow:0 14px 40px -12px rgba(0,0,0,0.55);
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+    box-shadow:0 14px 40px -10px rgba(0,0,0,0.7);
   }
   .nav-brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
   .nav-brand .patch{
@@ -604,7 +604,7 @@
   }
   .session-badge button:hover{ border-color:var(--gold); }
   @media (max-width:640px){
-    .session-badge{ top:auto; bottom:14px; right:14px; left:14px; justify-content:space-between; }
+    .session-badge{ top:66px; bottom:auto; right:14px; left:14px; justify-content:space-between; }
   }
 
   /* ============ MOBILE REFINEMENTS ============ */
@@ -654,10 +654,11 @@
   .theme-toggle{
     position:fixed; top:14px; left:14px; z-index:150;
     width:42px; height:42px; border-radius:50%;
-    background:rgba(23,29,53,0.85); border:1px solid var(--line-soft);
-    backdrop-filter:blur(14px); color:var(--text-hi);
+    background:rgba(15,19,35,0.92); border:1px solid var(--line-soft);
+    backdrop-filter:blur(16px); color:var(--text-hi);
     display:flex; align-items:center; justify-content:center;
     font-size:17px; cursor:pointer; transition:border-color 0.25s ease, transform 0.25s ease;
+    box-shadow:0 8px 22px -6px rgba(0,0,0,0.6);
   }
   .theme-toggle:hover{ border-color:var(--gold); transform:translateY(-1px); }
   @media (max-width:640px){
