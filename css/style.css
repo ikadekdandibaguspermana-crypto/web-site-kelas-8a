@@ -1,4 +1,4 @@
- :root{
+  :root{
     --bg-void:#0a0d1a;
     --bg-deep:#12172b;
     --bg-panel:#171d35;
@@ -633,3 +633,171 @@
   a:focus-visible, button:focus-visible{
     outline:2px solid var(--gold); outline-offset:3px;
   }
+
+  /* ============================================================
+     FITUR TAMBAHAN — Tema Terang/Gelap, Papan Pengumuman,
+     Jadwal Pelajaran, Agenda Kelas, Export PDF.
+     Semua di bawah ini murni tambahan baru, tidak mengubah
+     style/markup yang sudah ada sebelumnya.
+  ============================================================ */
+
+  /* ---------- Theme toggle button ---------- */
+  .theme-toggle{
+    position:fixed; top:14px; left:14px; z-index:150;
+    width:42px; height:42px; border-radius:50%;
+    background:rgba(23,29,53,0.85); border:1px solid var(--line-soft);
+    backdrop-filter:blur(14px); color:var(--text-hi);
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px; cursor:pointer; transition:border-color 0.25s ease, transform 0.25s ease;
+  }
+  .theme-toggle:hover{ border-color:var(--gold); transform:translateY(-1px); }
+  @media (max-width:640px){
+    .theme-toggle{ top:auto; bottom:14px; left:14px; }
+  }
+
+  /* ---------- Light mode overrides (opt-in via body.light-mode) ---------- */
+  body.light-mode{
+    --bg-void:#f6f3ec;
+    --bg-deep:#efe9db;
+    --bg-panel:#ffffff;
+    --bg-panel-hi:#fbf8f0;
+    --line:rgba(184,131,0,0.18);
+    --line-soft:rgba(20,20,20,0.09);
+    --text-hi:#181a1f;
+    --text-mid:#4b4f5c;
+    --text-low:#7a7f8c;
+  }
+  body.light-mode .starfield{ opacity:0.18; }
+  body.light-mode .glow-orb{ opacity:0.5; }
+  body.light-mode .hero h1{
+    background:linear-gradient(180deg, var(--text-hi) 40%, #b88300 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  body.light-mode .absen-btn[data-s="H"].active,
+  body.light-mode .absen-btn[data-s="S"].active,
+  body.light-mode .absen-btn[data-s="I"].active,
+  body.light-mode .absen-btn[data-s="A"].active{ color:#0a0d1a; }
+
+  /* ---------- Composer shared style (Pengumuman & Agenda admin forms) ---------- */
+  .composer-box{
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:var(--radius-md);
+    padding:20px; margin-bottom:26px; display:flex; flex-direction:column; gap:12px;
+  }
+  .composer-row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .composer-box textarea, .composer-box input[type="text"], .composer-box input[type="date"]{
+    background:var(--bg-void); border:1px solid var(--line-soft); border-radius:12px;
+    padding:12px 14px; color:var(--text-hi); font-family:var(--font-body); font-size:13.5px;
+    flex:1; min-width:160px; color-scheme:dark;
+  }
+  body.light-mode .composer-box textarea,
+  body.light-mode .composer-box input[type="text"],
+  body.light-mode .composer-box input[type="date"]{ color-scheme:light; }
+  .composer-box textarea{ resize:vertical; min-height:64px; width:100%; }
+  .composer-box input:focus, .composer-box textarea:focus{ outline:none; border-color:var(--gold); }
+  .btn-add{
+    font-family:var(--font-mono); font-size:11.5px; font-weight:600; color:var(--bg-void);
+    background:var(--teal); border:1px solid var(--teal); padding:11px 20px; border-radius:999px;
+    cursor:pointer; transition:all 0.25s ease; align-self:flex-start;
+  }
+  .btn-add:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
+  .btn-add:disabled{ opacity:0.4; cursor:not-allowed; }
+  .admin-only-note{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-low);
+  }
+
+  /* ---------- Papan Pengumuman ---------- */
+  .pengumuman-list{ display:flex; flex-direction:column; gap:10px; }
+  .pengumuman-item{
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:14px;
+    padding:16px 18px; display:flex; gap:14px; align-items:flex-start;
+    transition:border-color 0.25s ease, background 0.25s ease;
+  }
+  .pengumuman-item:hover{ border-color:var(--line); background:var(--bg-panel-hi); }
+  .pengumuman-item .pu-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--gold); margin-top:6px; flex-shrink:0;
+  }
+  .pengumuman-item .pu-body{ flex:1; min-width:0; }
+  .pengumuman-item .pu-text{ font-size:14px; color:var(--text-hi); white-space:pre-wrap; word-break:break-word; }
+  .pengumuman-item .pu-meta{
+    font-family:var(--font-mono); font-size:10px; color:var(--text-low); margin-top:8px; letter-spacing:0.5px;
+  }
+  .pengumuman-item .pu-del{
+    flex-shrink:0; background:transparent; border:1px solid var(--line-soft); color:var(--text-low);
+    border-radius:8px; padding:6px 10px; font-family:var(--font-mono); font-size:10px; cursor:pointer;
+    transition:all 0.2s ease;
+  }
+  .pengumuman-item .pu-del:hover{ color:#ff8a8a; border-color:#ff8a8a; }
+  .list-empty{
+    color:var(--text-low); font-size:13.5px; font-family:var(--font-mono); text-align:center; padding:30px 10px;
+  }
+
+  /* ---------- Jadwal Pelajaran ---------- */
+  .jadwal-grid{
+    display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;
+  }
+  @media (max-width:960px){ .jadwal-grid{ grid-template-columns:repeat(3, 1fr); } }
+  @media (max-width:640px){ .jadwal-grid{ grid-template-columns:repeat(2, 1fr); } }
+  .jadwal-day{
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:var(--radius-md);
+    padding:16px 14px; display:flex; flex-direction:column; gap:8px; min-height:120px;
+  }
+  .jadwal-day h4{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal);
+    margin-bottom:4px;
+  }
+  .jadwal-entry{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    background:var(--bg-panel-hi); border-radius:8px; padding:8px 10px; font-size:12px;
+  }
+  .jadwal-entry .je-time{ font-family:var(--font-mono); font-size:9.5px; color:var(--gold-soft); display:block; }
+  .jadwal-entry .je-subject{ color:var(--text-hi); font-weight:500; }
+  .jadwal-entry .je-del{
+    background:none; border:none; color:var(--text-low); cursor:pointer; font-size:13px; flex-shrink:0; padding:2px 4px;
+  }
+  .jadwal-entry .je-del:hover{ color:#ff8a8a; }
+  .jadwal-empty-day{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-low); }
+  .jadwal-add-row{ display:flex; gap:6px; margin-top:auto; flex-wrap:wrap; }
+  .jadwal-add-row input{
+    background:var(--bg-void); border:1px solid var(--line-soft); border-radius:8px;
+    padding:7px 8px; color:var(--text-hi); font-size:11px; font-family:var(--font-body); color-scheme:dark;
+  }
+  body.light-mode .jadwal-add-row input{ color-scheme:light; }
+  .jadwal-add-row input.je-time-input{ width:64px; flex-shrink:0; }
+  .jadwal-add-row input.je-subject-input{ flex:1; min-width:70px; }
+  .jadwal-add-btn{
+    background:var(--teal); border:1px solid var(--teal); color:var(--bg-void); border-radius:8px;
+    padding:7px 10px; font-size:11px; cursor:pointer; flex-shrink:0;
+  }
+  .jadwal-add-btn:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
+
+  /* ---------- Agenda Kelas ---------- */
+  .agenda-list{ display:flex; flex-direction:column; gap:10px; }
+  .agenda-item{
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:14px;
+    padding:16px 18px; display:flex; gap:16px; align-items:flex-start;
+    transition:border-color 0.25s ease, background 0.25s ease;
+  }
+  .agenda-item:hover{ border-color:var(--line); background:var(--bg-panel-hi); }
+  .agenda-item.past{ opacity:0.5; }
+  .agenda-date{
+    font-family:var(--font-mono); font-size:11px; color:var(--bg-void); background:var(--gold);
+    border-radius:10px; padding:8px 10px; text-align:center; flex-shrink:0; min-width:56px; font-weight:600;
+    line-height:1.3;
+  }
+  .agenda-date .ag-day{ display:block; font-size:16px; }
+  .agenda-body{ flex:1; min-width:0; }
+  .agenda-body h4{ font-family:var(--font-display); font-size:15.5px; color:var(--text-hi); }
+  .agenda-body p{ font-size:12.5px; color:var(--text-mid); margin-top:4px; }
+  .agenda-del{
+    flex-shrink:0; background:transparent; border:1px solid var(--line-soft); color:var(--text-low);
+    border-radius:8px; padding:6px 10px; font-family:var(--font-mono); font-size:10px; cursor:pointer;
+  }
+  .agenda-del:hover{ color:#ff8a8a; border-color:#ff8a8a; }
+
+  /* ---------- Extra PDF export button next to existing CSV button ---------- */
+  .rekap-download-pdf{
+    background:var(--teal); border:1px solid var(--teal); color:var(--bg-void);
+  }
+  .rekap-download-pdf:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
+  .rekap-download-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  @media (max-width:640px){ .rekap-download-group{ width:100%; } .rekap-download-group button{ flex:1; } }
