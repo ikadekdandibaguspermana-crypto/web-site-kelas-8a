@@ -1,4 +1,6 @@
-const firebaseConfig = {
+
+  // ================= FIREBASE / FIRESTORE =================
+  const firebaseConfig = {
     apiKey: "AIzaSyAruYX883CuAYkes1Uq-eYt7ZgpWR0iUG4",
     authDomain: "ombak-nusantara.firebaseapp.com",
     projectId: "ombak-nusantara",
@@ -22,7 +24,7 @@ const firebaseConfig = {
   const studentPins = {
     "Ni Ketut Nindia Candra Dewi": "9837",
     "I Ketut Anna Ary Sudana Putra": "1553",
-    "Ni Luh Putu Laksmi Pradnyaswari": "6638",
+    "Luh Putu Laksmi Pradnyaswari": "6638",
     "I Made Bayu Pastika Putra": "3209",
     "I Gusti Ayu Kadek Sulaksmi": "1444",
     "I Gusti Lanang Agung Putra Wedhana": "4979",
@@ -55,7 +57,7 @@ const firebaseConfig = {
   const pengurus = [
     { name: "Ni Ketut Nindia Candra Dewi", jabatan: "Ketua Kelas" },
     { name: "I Ketut Anna Ary Sudana Putra", jabatan: "Wakil Ketua" },
-    { name: "Ni Luh Putu Laksmi Pradnyaswari", jabatan: "Sekretaris 1" },
+    { name: "Luh Putu Laksmi Pradnyaswari", jabatan: "Sekretaris 1" },
     { name: "I Made Bayu Pastika Putra", jabatan: "Sekretaris 2" },
     { name: "I Gusti Ayu Kadek Sulaksmi", jabatan: "Bendahara 1" },
     { name: "I Gusti Lanang Agung Putra Wedhana", jabatan: "Bendahara 2" }
@@ -671,3 +673,337 @@ const firebaseConfig = {
     });
   }, { threshold: 0.12 });
   revealEls.forEach(el => revealer.observe(el));
+
+  /* ============================================================
+     FITUR TAMBAHAN — semua kode di bawah ini baru, tidak mengubah
+     apa pun yang sudah ada di atas.
+  ============================================================ */
+
+  // ---------- Tema Terang / Gelap ----------
+  const THEME_KEY = 'aventraTheme';
+  const themeToggleBtn = document.getElementById('themeToggle');
+  function applyTheme(theme) {
+    document.body.classList.toggle('light-mode', theme === 'light');
+    themeToggleBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+  }
+  (function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    applyTheme(saved === 'light' ? 'light' : 'dark');
+  })();
+  themeToggleBtn.addEventListener('click', () => {
+    const next = document.body.classList.contains('light-mode') ? 'dark' : 'light';
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  });
+
+  // ---------- Helper: tampilkan komponen khusus admin setelah login ----------
+  function isCurrentlyAdmin() {
+    const s = currentSessionInfo();
+    return s.role === 'admin';
+  }
+
+  // ================= PAPAN PENGUMUMAN =================
+  const pengumumanComposer = document.getElementById('pengumumanComposer');
+  const pengumumanInput = document.getElementById('pengumumanInput');
+  const pengumumanSubmit = document.getElementById('pengumumanSubmit');
+  const pengumumanList = document.getElementById('pengumumanList');
+  const pengumumanEmpty = document.getElementById('pengumumanEmpty');
+
+  function formatTanggalWaktu(ts) {
+    if (!ts || !ts.toDate) return '';
+    const d = ts.toDate();
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderPengumuman(snap) {
+    pengumumanList.innerHTML = '';
+    if (snap.empty) {
+      pengumumanEmpty.style.display = 'block';
+      return;
+    }
+    pengumumanEmpty.style.display = 'none';
+    const admin = isCurrentlyAdmin();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const item = document.createElement('div');
+      item.className = 'pengumuman-item stagger-item in';
+      item.innerHTML = `
+        <div class="pu-dot"></div>
+        <div class="pu-body">
+          <div class="pu-text"></div>
+          <div class="pu-meta">${formatTanggalWaktu(d.createdAt)}</div>
+        </div>
+        ${admin ? '<button class="pu-del">Hapus</button>' : ''}
+      `;
+      item.querySelector('.pu-text').textContent = d.text || '';
+      if (admin) {
+        item.querySelector('.pu-del').addEventListener('click', async () => {
+          if (!confirm('Hapus pengumuman ini?')) return;
+          try { await db.collection('pengumuman').doc(doc.id).delete(); }
+          catch (e) { console.error(e); alert('Gagal menghapus pengumuman.'); }
+        });
+      }
+      pengumumanList.appendChild(item);
+    });
+  }
+
+  function listenPengumuman() {
+    db.collection('pengumuman').orderBy('createdAt', 'desc').limit(50)
+      .onSnapshot(renderPengumuman, (err) => console.error('pengumuman:', err));
+  }
+
+  pengumumanSubmit.addEventListener('click', async () => {
+    if (!isCurrentlyAdmin()) return;
+    const text = pengumumanInput.value.trim();
+    if (!text) return;
+    pengumumanSubmit.disabled = true;
+    try {
+      await db.collection('pengumuman').add({
+        text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      pengumumanInput.value = '';
+    } catch (e) {
+      console.error(e);
+      alert('Gagal mengirim pengumuman. Cek koneksi internet.');
+    }
+    pengumumanSubmit.disabled = false;
+  });
+
+  // ================= JADWAL PELAJARAN =================
+  const jadwalGrid = document.getElementById('jadwalGrid');
+  const jadwalSubText = document.getElementById('jadwalSubText');
+  const hariList = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  function jadwalDocRef() { return db.collection('jadwal').doc('mingguan'); }
+  let jadwalCurrentData = {};
+
+  function renderJadwal() {
+    const admin = isCurrentlyAdmin();
+    jadwalSubText.textContent = admin
+      ? 'Klik "+" untuk menambah mata pelajaran pada tiap hari. Tersimpan otomatis ke server.'
+      : 'Jadwal mata pelajaran mingguan kelas Aventra. Tersinkron otomatis ke semua perangkat.';
+    jadwalGrid.innerHTML = '';
+    hariList.forEach(hari => {
+      const entries = (jadwalCurrentData[hari] || []);
+      const col = document.createElement('div');
+      col.className = 'jadwal-day stagger-item in';
+      let entriesHtml = '';
+      if (entries.length === 0) {
+        entriesHtml = '<span class="jadwal-empty-day">Belum ada jadwal</span>';
+      } else {
+        entriesHtml = entries.map((e, i) => `
+          <div class="jadwal-entry">
+            <span><span class="je-time">${e.waktu || ''}</span><span class="je-subject">${e.mapel || ''}</span></span>
+            ${admin ? `<button class="je-del" data-hari="${hari}" data-idx="${i}">✕</button>` : ''}
+          </div>
+        `).join('');
+      }
+      col.innerHTML = `
+        <h4>${hari}</h4>
+        ${entriesHtml}
+        ${admin ? `
+          <div class="jadwal-add-row">
+            <input type="text" class="je-time-input" placeholder="07:00" data-hari="${hari}">
+            <input type="text" class="je-subject-input" placeholder="Mapel" data-hari="${hari}">
+            <button class="jadwal-add-btn" data-hari="${hari}">+</button>
+          </div>
+        ` : ''}
+      `;
+      jadwalGrid.appendChild(col);
+    });
+
+    if (admin) {
+      jadwalGrid.querySelectorAll('.je-del').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const hari = btn.getAttribute('data-hari');
+          const idx = parseInt(btn.getAttribute('data-idx'), 10);
+          const updated = (jadwalCurrentData[hari] || []).slice();
+          updated.splice(idx, 1);
+          try { await jadwalDocRef().set({ [hari]: updated }, { merge: true }); }
+          catch (e) { console.error(e); alert('Gagal menghapus jadwal.'); }
+        });
+      });
+      jadwalGrid.querySelectorAll('.jadwal-add-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const hari = btn.getAttribute('data-hari');
+          const timeInput = jadwalGrid.querySelector(`.je-time-input[data-hari="${hari}"]`);
+          const subjInput = jadwalGrid.querySelector(`.je-subject-input[data-hari="${hari}"]`);
+          const mapel = subjInput.value.trim();
+          if (!mapel) return;
+          const waktu = timeInput.value.trim();
+          const updated = (jadwalCurrentData[hari] || []).concat([{ waktu, mapel }]);
+          btn.disabled = true;
+          try {
+            await jadwalDocRef().set({ [hari]: updated }, { merge: true });
+            timeInput.value = ''; subjInput.value = '';
+          } catch (e) { console.error(e); alert('Gagal menambah jadwal.'); }
+          btn.disabled = false;
+        });
+      });
+    }
+  }
+
+  function listenJadwal() {
+    jadwalDocRef().onSnapshot(snap => {
+      jadwalCurrentData = snap.exists ? snap.data() : {};
+      renderJadwal();
+    }, err => console.error('jadwal:', err));
+  }
+
+  // ================= AGENDA KELAS =================
+  const agendaComposer = document.getElementById('agendaComposer');
+  const agendaTitleInput = document.getElementById('agendaTitleInput');
+  const agendaDateInput = document.getElementById('agendaDateInput');
+  const agendaNoteInput = document.getElementById('agendaNoteInput');
+  const agendaSubmit = document.getElementById('agendaSubmit');
+  const agendaList = document.getElementById('agendaList');
+  const agendaEmpty = document.getElementById('agendaEmpty');
+  const bulanSingkat = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+  function renderAgenda(snap) {
+    agendaList.innerHTML = '';
+    if (snap.empty) {
+      agendaEmpty.style.display = 'block';
+      return;
+    }
+    agendaEmpty.style.display = 'none';
+    const admin = isCurrentlyAdmin();
+    const todayId = todayStr();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const isPast = d.date && d.date < todayId;
+      const dateParts = (d.date || '').split('-'); // YYYY-MM-DD
+      const dayNum = dateParts[2] || '--';
+      const monLabel = dateParts[1] ? bulanSingkat[parseInt(dateParts[1], 10) - 1] : '';
+      const item = document.createElement('div');
+      item.className = 'agenda-item stagger-item in' + (isPast ? ' past' : '');
+      item.innerHTML = `
+        <div class="agenda-date"><span class="ag-day">${dayNum}</span>${monLabel}</div>
+        <div class="agenda-body">
+          <h4></h4>
+          <p></p>
+        </div>
+        ${admin ? '<button class="agenda-del">Hapus</button>' : ''}
+      `;
+      item.querySelector('h4').textContent = d.title || '';
+      item.querySelector('p').textContent = d.note || '';
+      if (admin) {
+        item.querySelector('.agenda-del').addEventListener('click', async () => {
+          if (!confirm('Hapus agenda ini?')) return;
+          try { await db.collection('agenda').doc(doc.id).delete(); }
+          catch (e) { console.error(e); alert('Gagal menghapus agenda.'); }
+        });
+      }
+      agendaList.appendChild(item);
+    });
+  }
+
+  function listenAgenda() {
+    db.collection('agenda').orderBy('date', 'asc').limit(100)
+      .onSnapshot(renderAgenda, err => console.error('agenda:', err));
+  }
+
+  agendaSubmit.addEventListener('click', async () => {
+    if (!isCurrentlyAdmin()) return;
+    const title = agendaTitleInput.value.trim();
+    const date = agendaDateInput.value;
+    const note = agendaNoteInput.value.trim();
+    if (!title || !date) { alert('Judul dan tanggal agenda wajib diisi.'); return; }
+    agendaSubmit.disabled = true;
+    try {
+      await db.collection('agenda').add({
+        title, date, note,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      agendaTitleInput.value = ''; agendaNoteInput.value = ''; agendaDateInput.value = '';
+    } catch (e) {
+      console.error(e);
+      alert('Gagal menambah agenda. Cek koneksi internet.');
+    }
+    agendaSubmit.disabled = false;
+  });
+
+  // ---------- Tampilkan composer khusus admin & mulai listener setelah login ----------
+  const _originalEnterSite = enterSite;
+  function enterSiteWithExtras() {
+    _originalEnterSite();
+    const admin = isCurrentlyAdmin();
+    pengumumanComposer.style.display = admin ? 'flex' : 'none';
+    agendaComposer.style.display = admin ? 'flex' : 'none';
+    listenPengumuman();
+    listenJadwal();
+    listenAgenda();
+  }
+  // Sambungkan ulang tombol login & init-session supaya memakai versi "with extras"
+  // tanpa mengubah fungsi enterSite asli maupun listener yang sudah terpasang.
+  loginSubmit.removeEventListener('click', doLogin);
+  function doLoginWithExtras() {
+    loginError.textContent = '';
+    if (adminMode) {
+      if (loginAdminPass.value === ADMIN_PASSWORD) {
+        saveSession({ role: 'admin', name: 'Admin' });
+        enterSiteWithExtras();
+      } else {
+        loginError.textContent = 'Password admin salah.';
+      }
+    } else {
+      const student = findStudentByName(loginName.value);
+      if (!student) {
+        loginError.textContent = 'Nama tidak ditemukan di daftar absensi. Periksa ejaan nama kamu.';
+        return;
+      }
+      const correctPin = studentPins[student.name];
+      if (correctPin && loginPin.value.trim() === correctPin) {
+        saveSession({ role: 'student', name: student.name });
+        enterSiteWithExtras();
+      } else {
+        loginError.textContent = 'PIN salah. Cek kembali PIN kamu di Daftar Anggota Kelas.';
+      }
+    }
+  }
+  loginSubmit.addEventListener('click', doLoginWithExtras);
+  // Menekan Enter pada input login memanggil `doLogin()` (baris asli, tidak diubah).
+  // Karena deklarasi function membuat binding yang bisa ditimpa, arahkan ulang
+  // agar tekan-Enter juga memicu fitur tambahan (pengumuman/jadwal/agenda).
+  doLogin = doLoginWithExtras;
+  enterSite = enterSiteWithExtras;
+
+  // Jika sesi sudah aktif saat halaman dimuat (initSession sudah memanggil
+  // enterSite asli di atas), pastikan fitur tambahan tetap menyala juga.
+  if (loadSession()) {
+    const admin = isCurrentlyAdmin();
+    pengumumanComposer.style.display = admin ? 'flex' : 'none';
+    agendaComposer.style.display = admin ? 'flex' : 'none';
+    listenPengumuman();
+    listenJadwal();
+    listenAgenda();
+  }
+
+  // ================= EXPORT PDF (tambahan di modal Rekap Bulanan) =================
+  const rekapDownloadPdfBtn = document.getElementById('rekapDownloadPdf');
+  const _origOpenRekap = openRekap;
+  rekapBtn.removeEventListener('click', openRekap);
+  rekapBtn.addEventListener('click', async () => {
+    await _origOpenRekap();
+    rekapDownloadPdfBtn.disabled = !rekapCurrentData;
+  });
+
+  rekapDownloadPdfBtn.addEventListener('click', () => {
+    if (!rekapCurrentData || !window.jspdf) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text('Rekap Absensi - Aventra Class', 14, 16);
+    doc.setFontSize(10);
+    doc.text(rekapTitle.textContent, 14, 23);
+    doc.autoTable({
+      startY: 28,
+      head: [['No', 'Nama', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Belum', '% Hadir']],
+      body: rekapCurrentData.rows.map(r => [r.no, r.nama, r.H, r.S, r.I, r.A, r.belum, `${r.pct}%`]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [242, 183, 5], textColor: [10, 13, 26] }
+    });
+    doc.save(`rekap-absensi-${rekapCurrentData.monthLabel}.pdf`);
+  });
