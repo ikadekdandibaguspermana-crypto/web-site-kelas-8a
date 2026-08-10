@@ -29,8 +29,8 @@
     "I Gusti Lanang Agung Putra Wedhana": "4979",
     "Casey": "9144", "Redi": "4370", "Rizki": "1546", "Alit Payama": "8615",
     "Novi": "3212", "Ary": "2395",
-    "Dek Adi": "9128", "Candra": "6884", "Dandi Bagus": "6767", "Prabu": "7768",
-    "Alit": "4444", "Cipta": "7209", "David": "5795",
+    "Dek Adi": "9128", "Candra": "6884", "Dandi Bagus": "1921", "Prabu": "7768",
+    "Alit": "8484", "Cipta": "7209", "David": "5795",
     "Resta": "3065", "Awan": "8164", "Diah": "2704",
     "Gus Dwik": "2892", "Cahya Aprianti": "2782",
     "April": "4882", "Meisya": "9932", "Rastia": "8169", "Mang Cahya": "1286",
@@ -975,6 +975,7 @@
     listenPengumuman();
     listenJadwal();
     listenAgenda();
+    listenGeofenceSettings();
   }
   // Nama pengurus inti (dari array `pengurus` yang sudah ada) dipakai untuk
   // menandai sesi mereka sebagai role 'pengurus' saat login — dapat akses
@@ -1025,6 +1026,7 @@
     listenPengumuman();
     listenJadwal();
     listenAgenda();
+    listenGeofenceSettings();
   }
 
   // ================= EXPORT PDF (tambahan di modal Rekap Bulanan) =================
@@ -1053,3 +1055,203 @@
     });
     doc.save(`rekap-absensi-${rekapCurrentData.monthLabel}.pdf`);
   });
+
+  // ================= ABSEN OTOMATIS GPS (GEOFENCE) =================
+  // Admin mengatur satu titik lokasi + radius sekolah (koleksi Firestore
+  // "settings", dokumen "geofence"). Siswa yang bertahan di dalam radius
+  // itu selama N menit akan otomatis tercatat Hadir untuk tanggal hari ini.
+  const geoAdminBox = document.getElementById('geoAdminBox');
+  const geoStudentBox = document.getElementById('geoStudentBox');
+  const geoLatInput = document.getElementById('geoLat');
+  const geoLngInput = document.getElementById('geoLng');
+  const geoRadiusInput = document.getElementById('geoRadius');
+  const geoMinutesInput = document.getElementById('geoMinutes');
+  const geoUseLocationBtn = document.getElementById('geoUseLocation');
+  const geoSaveSettingsBtn = document.getElementById('geoSaveSettings');
+  const geoAdminStatus = document.getElementById('geoAdminStatus');
+  const geoActivateBtn = document.getElementById('geoActivateBtn');
+  const geoStopBtn = document.getElementById('geoStopBtn');
+  const geoStatusLine = document.getElementById('geoStatusLine');
+
+  let geofenceSettings = null; // {lat,lng,radius,minutes}
+  let geoWatchId = null;
+  let geoInsideSince = null;
+  let geoCountdownTimer = null;
+
+  function geofenceDocRef() { return db.collection('settings').doc('geofence'); }
+
+  function haversineMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function listenGeofenceSettings() {
+    geofenceDocRef().onSnapshot(snap => {
+      geofenceSettings = snap.exists ? snap.data() : null;
+      if (geofenceSettings) {
+        geoLatInput.value = geofenceSettings.lat != null ? geofenceSettings.lat.toFixed(6) : '';
+        geoLngInput.value = geofenceSettings.lng != null ? geofenceSettings.lng.toFixed(6) : '';
+        geoRadiusInput.value = geofenceSettings.radius || 120;
+        geoMinutesInput.value = geofenceSettings.minutes || 3;
+      } else {
+        if (!geoRadiusInput.value) geoRadiusInput.value = 120;
+        if (!geoMinutesInput.value) geoMinutesInput.value = 3;
+      }
+    }, err => console.error('geofence settings:', err));
+  }
+
+  geoUseLocationBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) { alert('Perangkat/browser ini tidak mendukung deteksi lokasi.'); return; }
+    geoAdminStatus.textContent = 'Mendeteksi lokasi...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        geoLatInput.value = pos.coords.latitude.toFixed(6);
+        geoLngInput.value = pos.coords.longitude.toFixed(6);
+        geoAdminStatus.textContent = `Lokasi terdeteksi (akurasi ±${Math.round(pos.coords.accuracy)}m). Klik Simpan Pengaturan.`;
+      },
+      err => {
+        geoAdminStatus.textContent = 'Gagal mendeteksi lokasi: ' + (err && err.message ? err.message : 'izin ditolak.');
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  });
+
+  geoSaveSettingsBtn.addEventListener('click', async () => {
+    const lat = parseFloat(geoLatInput.value);
+    const lng = parseFloat(geoLngInput.value);
+    const radius = parseInt(geoRadiusInput.value, 10) || 120;
+    const minutes = parseInt(geoMinutesInput.value, 10) || 3;
+    if (isNaN(lat) || isNaN(lng)) {
+      alert('Klik "Pakai Lokasi Saya Sekarang" dulu sambil berdiri di area sekolah.');
+      return;
+    }
+    geoSaveSettingsBtn.disabled = true;
+    try {
+      await geofenceDocRef().set({ lat, lng, radius, minutes });
+      geoAdminStatus.textContent = 'Tersimpan ✓';
+      setTimeout(() => { geoAdminStatus.textContent = ''; }, 3000);
+    } catch (e) {
+      console.error(e);
+      alert('Gagal menyimpan pengaturan lokasi: ' + (e && e.message ? e.message : e));
+    }
+    geoSaveSettingsBtn.disabled = false;
+  });
+
+  function setGeoStatus(msg, type) {
+    geoStatusLine.textContent = msg;
+    geoStatusLine.className = 'geo-status-line show' + (type ? ' ' + type : '');
+  }
+
+  function stopGeoWatch(clearMsg) {
+    if (geoWatchId !== null) {
+      navigator.geolocation.clearWatch(geoWatchId);
+      geoWatchId = null;
+    }
+    geoInsideSince = null;
+    if (geoCountdownTimer) { clearInterval(geoCountdownTimer); geoCountdownTimer = null; }
+    geoActivateBtn.style.display = 'inline-flex';
+    geoStopBtn.style.display = 'none';
+    if (clearMsg) geoStatusLine.classList.remove('show');
+  }
+
+  async function finishAutoAbsen(session) {
+    stopGeoWatch(false);
+    const date = todayStr();
+    try {
+      await absenDocRef(date).set({ [session.name]: 'H' }, { merge: true });
+      setGeoStatus('🎉 Absen otomatis berhasil! Kamu tercatat Hadir.', 'success');
+    } catch (e) {
+      console.error(e);
+      setGeoStatus('Gagal menyimpan absen otomatis, coba lagi: ' + (e && e.message ? e.message : e), 'err');
+    }
+  }
+
+  function tickCountdown() {
+    if (!geofenceSettings || geoInsideSince === null) return;
+    const minutesRequired = geofenceSettings.minutes || 3;
+    const elapsedMs = Date.now() - geoInsideSince;
+    const remainingMs = Math.max(minutesRequired * 60000 - elapsedMs, 0);
+    if (remainingMs <= 0) {
+      finishAutoAbsen(currentSessionInfo());
+      return;
+    }
+    const remMin = Math.floor(remainingMs / 60000);
+    const remSec = Math.floor((remainingMs % 60000) / 1000);
+    setGeoStatus(`✅ Terdeteksi di area sekolah — tunggu ${remMin}:${String(remSec).padStart(2, '0')} lagi tanpa keluar area...`, 'ok');
+  }
+
+  function handleGeoPosition(pos) {
+    if (!geofenceSettings || geofenceSettings.lat == null) {
+      setGeoStatus('Lokasi sekolah belum diatur oleh admin.', 'warn');
+      stopGeoWatch(false);
+      return;
+    }
+    const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, geofenceSettings.lat, geofenceSettings.lng);
+    const radius = geofenceSettings.radius || 120;
+    if (dist <= radius) {
+      if (geoInsideSince === null) geoInsideSince = Date.now();
+      tickCountdown();
+    } else {
+      if (geoInsideSince !== null) {
+        geoInsideSince = null;
+        setGeoStatus('📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.', 'warn');
+      } else {
+        setGeoStatus(`Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah).`, 'warn');
+      }
+    }
+  }
+
+  function handleGeoError(err) {
+    let msg = 'Gagal mendeteksi lokasi.';
+    if (err && err.code === 1) msg = 'Izin lokasi ditolak. Aktifkan izin lokasi untuk browser ini di pengaturan HP, lalu coba lagi.';
+    else if (err && err.code === 2) msg = 'Lokasi tidak tersedia. Pastikan GPS/Lokasi HP menyala.';
+    else if (err && err.code === 3) msg = 'Waktu deteksi lokasi habis. Coba lagi.';
+    setGeoStatus(msg, 'err');
+    stopGeoWatch(false);
+  }
+
+  geoActivateBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) { alert('Perangkat/browser ini tidak mendukung deteksi lokasi.'); return; }
+    if (!geofenceSettings || geofenceSettings.lat == null) {
+      alert('Lokasi sekolah belum diatur oleh admin. Minta admin mengatur lokasi dulu di halaman Absensi.');
+      return;
+    }
+    geoActivateBtn.style.display = 'none';
+    geoStopBtn.style.display = 'inline-block';
+    setGeoStatus('Meminta izin lokasi...', 'warn');
+    geoWatchId = navigator.geolocation.watchPosition(handleGeoPosition, handleGeoError, {
+      enableHighAccuracy: true, maximumAge: 5000, timeout: 20000
+    });
+    geoCountdownTimer = setInterval(tickCountdown, 1000);
+  });
+
+  geoStopBtn.addEventListener('click', () => stopGeoWatch(true));
+
+  function updateGeoPanels(date, session) {
+    const isAdmin = session.role === 'admin';
+    geoAdminBox.style.display = isAdmin ? 'block' : 'none';
+    if (isAdmin) {
+      geoStudentBox.style.display = 'none';
+      return;
+    }
+    const isToday = date === todayStr();
+    const alreadySet = !!(currentDayData && currentDayData[session.name]);
+    if (isToday && !alreadySet) {
+      geoStudentBox.style.display = 'block';
+    } else {
+      geoStudentBox.style.display = 'none';
+      if (alreadySet) stopGeoWatch(true);
+    }
+  }
+
+  // Sisipkan ke alur render absensi yang sudah ada (tanpa mengubah fungsi
+  // aslinya) supaya panel GPS ikut ter-update setiap kali tanggal/data berubah.
+  const _origPaintAbsensi = paintAbsensi;
+  paintAbsensi = function paintAbsensiWithGeo(date, session) {
+    _origPaintAbsensi(date, session);
+    updateGeoPanels(date, session);
+  };
