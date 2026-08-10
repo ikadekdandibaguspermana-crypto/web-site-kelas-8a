@@ -211,6 +211,44 @@
     </div>
   </div>
 
+  <div class="geo-admin-box reveal" id="geoAdminBox" style="display:none;">
+    <h4>📍 Pengaturan Lokasi Sekolah (Absen Otomatis GPS)</h4>
+    <p>Berdiri di area sekolah, lalu klik tombol di bawah untuk menyimpan titik lokasinya. Siswa yang berada dalam radius ini selama waktu yang ditentukan akan otomatis tercatat Hadir.</p>
+    <div class="geo-admin-row">
+      <div class="geo-admin-field">
+        <label>Latitude</label>
+        <input type="text" id="geoLat" placeholder="-8.xxxxxx" readonly>
+      </div>
+      <div class="geo-admin-field">
+        <label>Longitude</label>
+        <input type="text" id="geoLng" placeholder="115.xxxxxx" readonly>
+      </div>
+      <div class="geo-admin-field">
+        <label>Radius (meter)</label>
+        <input type="number" id="geoRadius" placeholder="120" min="20" max="1000">
+      </div>
+      <div class="geo-admin-field">
+        <label>Menit di area</label>
+        <input type="number" id="geoMinutes" placeholder="3" min="1" max="30">
+      </div>
+    </div>
+    <div class="geo-admin-actions">
+      <button class="btn-add" id="geoUseLocation">Pakai Lokasi Saya Sekarang</button>
+      <button class="btn-add geo-save" id="geoSaveSettings">Simpan Pengaturan</button>
+      <span class="geo-admin-status" id="geoAdminStatus"></span>
+    </div>
+  </div>
+
+  <div class="geo-student-box reveal" id="geoStudentBox" style="display:none;">
+    <div class="geo-student-head">
+      <h4>📍 Absen Otomatis (GPS)</h4>
+      <p>Aktifkan saat kamu sampai di sekolah. Kalau kamu tetap berada di area sekolah selama waktu yang ditentukan, absenmu otomatis tercatat Hadir — tidak perlu tap manual.</p>
+    </div>
+    <button class="btn-add" id="geoActivateBtn">Aktifkan Absen Otomatis</button>
+    <button class="geo-stop-btn" id="geoStopBtn" style="display:none;">Matikan</button>
+    <p class="geo-status-line" id="geoStatusLine"></p>
+  </div>
+
   <div class="absen-list stagger-container" id="absenList"></div>
   <p class="absen-note" id="absenNote">Tersimpan otomatis</p>
 </section>
