@@ -334,7 +334,7 @@
 
   function todayStr() {
     const d = new Date();
-    return d.toISOString().slice(0, 10);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   }
   function pad2(n){ return String(n).padStart(2,'0'); }
 
@@ -370,6 +370,24 @@
   }
 
   absenDateInput.value = todayStr();
+
+  // Kalau tab dibiarkan terbuka melewati tengah malam, otomatis majukan
+  // tanggal ke "hari ini" yang baru — tapi hanya kalau saat ini memang
+  // sedang menampilkan tanggal hari ini (tidak mengganggu kalau user
+  // sengaja sedang melihat tanggal lain).
+  let lastKnownToday = todayStr();
+  setInterval(() => {
+    const nowToday = todayStr();
+    if (nowToday !== lastKnownToday) {
+      const wasOnToday = absenDateInput.value === lastKnownToday;
+      lastKnownToday = nowToday;
+      if (wasOnToday) {
+        absenDateInput.value = nowToday;
+        absenMonthSelect.value = nowToday.slice(0, 7);
+        renderAbsensi();
+      }
+    }
+  }, 60000);
 
   absenMonthSelect.addEventListener('change', () => {
     absenDateInput.value = clampDateToMonth(absenDateInput.value, absenMonthSelect.value);
