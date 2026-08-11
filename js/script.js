@@ -1158,6 +1158,7 @@
       navigator.geolocation.clearWatch(geoWatchId);
       geoWatchId = null;
     }
+    if (geoFirstFixTimer) { clearTimeout(geoFirstFixTimer); geoFirstFixTimer = null; }
     geoInsideSince = null;
     if (geoCountdownTimer) { clearInterval(geoCountdownTimer); geoCountdownTimer = null; }
     geoActivateBtn.style.display = 'inline-flex';
@@ -1192,6 +1193,7 @@
   }
 
   function handleGeoPosition(pos) {
+    if (geoFirstFixTimer) { clearTimeout(geoFirstFixTimer); geoFirstFixTimer = null; }
     if (!geofenceSettings || geofenceSettings.lat == null) {
       setGeoStatus('Lokasi sekolah belum diatur oleh admin.', 'warn');
       stopGeoWatch(false);
@@ -1199,6 +1201,7 @@
     }
     const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, geofenceSettings.lat, geofenceSettings.lng);
     const radius = geofenceSettings.radius || 120;
+    const acc = Math.round(pos.coords.accuracy || 0);
     if (dist <= radius) {
       if (geoInsideSince === null) geoInsideSince = Date.now();
       tickCountdown();
@@ -1207,7 +1210,7 @@
         geoInsideSince = null;
         setGeoStatus('📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.', 'warn');
       } else {
-        setGeoStatus(`Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah).`, 'warn');
+        setGeoStatus(`Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`, 'warn');
       }
     }
   }
@@ -1221,6 +1224,7 @@
     stopGeoWatch(false);
   }
 
+  let geoFirstFixTimer = null;
   geoActivateBtn.addEventListener('click', () => {
     if (!navigator.geolocation) { alert('Perangkat/browser ini tidak mendukung deteksi lokasi.'); return; }
     if (!geofenceSettings || geofenceSettings.lat == null) {
@@ -1230,8 +1234,11 @@
     geoActivateBtn.style.display = 'none';
     geoStopBtn.style.display = 'inline-block';
     setGeoStatus('Meminta izin lokasi...', 'warn');
+    geoFirstFixTimer = setTimeout(() => {
+      setGeoStatus('Masih mencari sinyal GPS... ini wajar sampai 30 detik, terutama di dalam ruangan. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.', 'warn');
+    }, 6000);
     geoWatchId = navigator.geolocation.watchPosition(handleGeoPosition, handleGeoError, {
-      enableHighAccuracy: true, maximumAge: 5000, timeout: 20000
+      enableHighAccuracy: true, maximumAge: 5000, timeout: 30000
     });
     geoCountdownTimer = setInterval(tickCountdown, 1000);
   });
