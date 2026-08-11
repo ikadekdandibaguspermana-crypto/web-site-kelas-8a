@@ -1111,7 +1111,14 @@
       pos => {
         geoLatInput.value = pos.coords.latitude.toFixed(6);
         geoLngInput.value = pos.coords.longitude.toFixed(6);
-        geoAdminStatus.textContent = `Lokasi terdeteksi (akurasi ±${Math.round(pos.coords.accuracy)}m). Klik Simpan Pengaturan.`;
+        const acc = Math.round(pos.coords.accuracy);
+        if (acc > 300) {
+          geoAdminStatus.innerHTML = `⚠️ Akurasi lemah (±${acc}m) — kemungkinan besar perangkat ini tidak punya GPS asli (laptop/PC hanya menebak dari WiFi). Sebaiknya ulangi langkah ini pakai HP sambil berdiri di sekolah, baru klik Simpan.`;
+          geoAdminStatus.style.color = 'var(--gold-soft)';
+        } else {
+          geoAdminStatus.innerHTML = `Lokasi terdeteksi (akurasi ±${acc}m). Klik Simpan Pengaturan.`;
+          geoAdminStatus.style.color = '';
+        }
       },
       err => {
         geoAdminStatus.textContent = 'Gagal mendeteksi lokasi: ' + (err && err.message ? err.message : 'izin ditolak.');
