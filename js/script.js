@@ -14,28 +14,13 @@
   function absenDocRef(dateStr) { return db.collection('absensi').doc(dateStr); }
 
   // ================= AUTH / LOGIN GATE =================
-  const ADMIN_PASSWORD = "admin554";
+  // ADMIN_PASSWORD & studentPins sekarang diambil dari js/config.js
+  // (dimuat lewat <script src="js/config.js"> SEBELUM file ini di index.html),
+  // bukan ditulis langsung di file ini lagi.
+  const ADMIN_PASSWORD = window.APP_CONFIG.ADMIN_PASSWORD;
   const SESSION_KEY = "aventraSession";
 
-  // PIN unik per anggota (angka acak 4 digit) — dipakai bersama nama saat login.
-  // Ditampilkan di bawah setiap nama pada Daftar Anggota Kelas & struktur pengurus
-  // supaya masing-masing tahu PIN mereka sendiri. Admin tidak memakai PIN ini.
-  const studentPins = {
-    "Ni Ketut Nindia Candra Dewi": "9837",
-    "I Ketut Anna Ary Sudana Putra": "1553",
-    "Luh Putu Laksmi Pradnyaswari": "6638",
-    "I Made Bayu Pastika Putra": "3209",
-    "I Gusti Ayu Kadek Sulaksmi": "1444",
-    "I Gusti Lanang Agung Putra Wedhana": "4979",
-    "Casey": "9144", "Redi": "4370", "Rizki": "1546", "Alit Payama": "8615",
-    "Novi": "3212", "Ary": "2395",
-    "Dek Adi": "9128", "Candra": "6884", "Dandi Bagus": "1921", "Prabu": "7768",
-    "Alit": "8484", "Cipta": "7209", "David": "5795",
-    "Resta": "3065", "Awan": "8164", "Diah": "2704",
-    "Gus Dwik": "2892", "Cahya Aprianti": "2782",
-    "April": "4882", "Meisya": "9932", "Rastia": "8169", "Mang Cahya": "1286",
-    "Desita": "4883", "Damay": "5556", "Felii": "8277", "Aldo": "6544"
-  };
+  const studentPins = window.APP_CONFIG.studentPins;
 
   // Full roster used both for the "Daftar Anggota Kelas" grid and as the
   // master name list for login + absensi (kept in sync so the name typed
