@@ -388,14 +388,12 @@
 </footer>
 
 <!--
-  PENTING: config.js dimuat SEBELUM script.js karena script.js membaca
-  window.APP_CONFIG (password admin & PIN murid) dari file ini.
-  config.js sengaja dipisah & didaftarkan di .gitignore supaya tidak
-  ikut ter-upload saat push ke GitHub — TAPI tetap bisa dibaca lewat
-  Inspect/DevTools browser siapa pun yang membuka web ini, karena
-  browser harus mengunduhnya agar login bisa berfungsi.
+  PENTING: auth.js dimuat SEBELUM script.js. auth.js menangani login
+  dengan memanggil server (Netlify Function), BUKAN dengan menyimpan
+  PIN/password di file yang dikirim ke browser. Tidak ada data rahasia
+  apa pun di file ini maupun di auth.js -- aman dilihat lewat Inspect.
 -->
-<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>
