@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="glow-orb one"></div>
+<div class="glow-orb two"></div>
+
+<!-- ================= LOGIN GATE ================= -->
+<div class="login-gate" id="loginGate">
+  <div class="login-box">
+    <div class="login-patch">AV</div>
+    <h2 id="loginTitle">Masuk ke Aventra Class</h2>
+    <p class="sub" id="loginSub">Masukkan nama dan PIN kamu persis seperti pada daftar absensi.</p>
+
+    <div id="loginFormStudent">
+      <div class="login-field">
+        <label for="loginName">Nama Lengkap / Panggilan</label>
+        <input type="text" id="loginName" autocomplete="off" placeholder="Contoh: David">
+      </div>
+      <div class="login-field">
+        <label for="loginPin">PIN Kamu</label>
+        <input type="password" id="loginPin" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="4 digit angka">
+      </div>
+    </div>
+
+    <div id="loginFormAdmin" style="display:none;">
+      <div class="login-field">
+        <label for="loginAdminPass">Password Admin</label>
+        <input type="password" id="loginAdminPass" autocomplete="off" placeholder="••••••••">
+      </div>
+    </div>
+
+    <button class="login-submit" id="loginSubmit">Masuk</button>
+    <p class="login-error" id="loginError"></p>
+    <button class="login-toggle" id="loginToggle">Masuk sebagai Admin</button>
+  </div>
+</div>
+
+<div class="session-badge" id="sessionBadge" style="display:none;">
+  <span>Masuk sebagai <b id="sessionName">-</b></span>
+  <button id="logoutBtn">Keluar</button>
+</div>
+
+<!-- ================= NAVBAR ================= -->
+<div class="nav-wrap" id="navWrap">
+  <nav>
+    <a href="#beranda" class="nav-brand">
+      <span class="patch">AV</span>
+      <span class="wordmark">AVENTRA<span> CLASS</span></span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#beranda" class="active">Beranda</a></li>
+      <li><a href="#struktur">Struktur Kelas</a></li>
+      <li><a href="#absensi">Absensi</a></li>
+      <li><a href="#kegiatan">Kegiatan</a></li>
+      <li><a href="#pengumuman">Pengumuman</a></li>
+      <li><a href="#jadwal">Jadwal</a></li>
+      <li><a href="#agenda">Agenda</a></li>
+      <li><a href="#footer">Kontak</a></li>
+    </ul>
+    <div class="nav-cta">
+      <span class="btn-ghost">TA 2025/2026</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Ganti tema terang/gelap">🌙</button>
+    <button class="nav-burger" id="burgerBtn" aria-label="Buka menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</div>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#beranda">Beranda</a>
+  <a href="#struktur">Struktur Kelas</a>
+  <a href="#absensi">Absensi</a>
+  <a href="#kegiatan">Kegiatan</a>
+  <a href="#pengumuman">Pengumuman</a>
+  <a href="#jadwal">Jadwal</a>
+  <a href="#agenda">Agenda</a>
+  <a href="#footer">Kontak</a>
+</div>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="beranda">
+  <div class="spotlight" id="spotlight"></div>
+  <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
+  <h1 class="load-in d2">AVENTRA<br>CLASS</h1>
+  <p class="tagline load-in d3">Kelas yang <strong>menjelajah bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
+
+  <div class="patch-badge load-in d4">
+    <svg viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle class="patch-ring" cx="75" cy="75" r="72" stroke="#f2b705" stroke-width="1.4" stroke-dasharray="3 5" opacity="0.5"/>
+      <circle cx="75" cy="75" r="60" fill="url(#patchGrad)" stroke="#f2b705" stroke-width="1.6"/>
+      <circle cx="75" cy="75" r="60" fill="none" stroke="#2fd4c4" stroke-width="0.6" opacity="0.4"/>
+      <path d="M75 38 L88 92 L75 82 L62 92 Z" fill="#0a0d1a" opacity="0.85"/>
+      <circle cx="75" cy="45" r="4" fill="#f2b705"/>
+      <text x="75" y="112" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="10" fill="#0a0d1a" font-weight="700" letter-spacing="2">AVENTRA</text>
+      <defs>
+        <linearGradient id="patchGrad" x1="15" y1="15" x2="135" y2="135" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#f7d158"/>
+          <stop offset="1" stop-color="#2fd4c4"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="stat-row load-in d5">
+    <span class="stat-chip"><span class="dot"></span>Wali Kelas <b data-count="1">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Pengurus Inti <b data-count="6">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Anggota <b data-count="27">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Total Murid <b data-count="33">0</b></span>
+  </div>
+
+  <div class="scroll-cue load-in d6">GULIR &nbsp;↓</div>
+</header>
+
+<!-- ================= STRUKTUR KELAS ================= -->
+<section class="section" id="struktur">
+  <div class="section-head reveal">
+    <div class="eyebrow">Kru Aventra</div>
+    <h2>Struktur Kelas</h2>
+    <p>Susunan wali kelas, pengurus inti, dan seluruh anggota yang menjalankan misi belajar Aventra Class sepanjang tahun ajaran ini.</p>
+  </div>
+
+  <div class="lead-cards stagger-container">
+    <div class="lead-card tilt stagger-item">
+      <div class="avatar-ring">RS</div>
+      <div class="lead-info">
+        <div class="role-tag">Wali Kelas</div>
+        <h3>Husnanda Arief A, S.Pd.</h3>
+        <p>Pembimbing &amp; penanggung jawab kelas Aventra</p>
+      </div>
+    </div>
+    <div class="lead-card teal tilt stagger-item">
+      <div class="avatar-ring">NK</div>
+      <div class="lead-info">
+        <div class="role-tag">Ketua Kelas</div>
+        <h3>Ni Ketut Nindia Candra Dewi</h3>
+        <p>Memimpin koordinasi &amp; kegiatan kelas</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="officer-grid stagger-container">
+    <div class="officer-card tilt stagger-item">
+      <div class="avatar-ring">AS</div>
+      <div class="role-tag">Wakil Ketua</div>
+      <h4>I Ketut Anna Ary Sudana Putra</h4>
+    </div>
+    <div class="officer-card tilt stagger-item">
+      <div class="avatar-ring">LP</div>
+      <div class="role-tag">Sekretaris 1</div>
+      <h4>Ni Luh Putu Laksmi Pradnyaswari</h4>
+    </div>
+    <div class="officer-card tilt stagger-item">
+      <div class="avatar-ring">BP</div>
+      <div class="role-tag">Sekretaris 2</div>
+      <h4>I Made Bayu Pastika Putra</h4>
+    </div>
+    <div class="officer-card tilt stagger-item">
+      <div class="avatar-ring">AK</div>
+      <div class="role-tag">Bendahara 1</div>
+      <h4>I Gusti Ayu Kadek Sulaksmi</h4>
+    </div>
+    <div class="officer-card tilt stagger-item">
+      <div class="avatar-ring">LA</div>
+      <div class="role-tag">Bendahara 2</div>
+      <h4>I Gusti Lanang Agung Putra Wedhana</h4>
+    </div>
+  </div>
+
+  <div class="roster-title reveal">
+    <h3>Daftar Anggota Kelas</h3>
+    <span id="rosterCount">0</span>
+  </div>
+  <div class="roster-grid stagger-container" id="rosterGrid"></div>
+</section>
+
+<!-- ================= ABSENSI ================= -->
+<section class="section" id="absensi">
+  <div class="section-head reveal">
+    <div class="eyebrow">Rekap Harian</div>
+    <h2>Daftar Absensi</h2>
+    <p id="absenSubText">Tandai kehadiran murid setiap hari. Status tersimpan otomatis ke server dan langsung terlihat di semua perangkat.</p>
+  </div>
+
+  <div class="absen-controls reveal">
+    <select class="absen-month" id="absenMonth"></select>
+    <input type="date" class="absen-date" id="absenDate">
+    <button class="absen-reset" id="absenReset">Reset Tanggal Ini</button>
+    <button class="rekap-btn" id="rekapBtn">Rekap Bulanan</button>
+    <div class="absen-summary" id="absenSummary">
+      <span class="absen-chip hadir"><span class="dot"></span>Hadir <b id="cntH">0</b></span>
+      <span class="absen-chip sakit"><span class="dot"></span>Sakit <b id="cntS">0</b></span>
+      <span class="absen-chip izin"><span class="dot"></span>Izin <b id="cntI">0</b></span>
+      <span class="absen-chip alpa"><span class="dot"></span>Alpa <b id="cntA">0</b></span>
+      <span class="absen-chip"><span class="dot" style="background:var(--text-low)"></span>Belum <b id="cntU">0</b></span>
+      <span class="absen-chip auto"><span class="dot"></span>Auto-save aktif</span>
+    </div>
+  </div>
+
+  <div class="geo-admin-box reveal" id="geoAdminBox" style="display:none;">
+    <h4>📍 Pengaturan Lokasi Sekolah (Absen Otomatis GPS)</h4>
+    <p>Berdiri di area sekolah, lalu klik tombol di bawah untuk menyimpan titik lokasinya. Siswa yang berada dalam radius ini selama waktu yang ditentukan akan otomatis tercatat Hadir.</p>
+    <div class="geo-admin-row">
+      <div class="geo-admin-field">
+        <label>Latitude</label>
+        <input type="text" id="geoLat" placeholder="-8.xxxxxx" readonly>
+      </div>
+      <div class="geo-admin-field">
+        <label>Longitude</label>
+        <input type="text" id="geoLng" placeholder="115.xxxxxx" readonly>
+      </div>
+      <div class="geo-admin-field">
+        <label>Radius (meter)</label>
+        <input type="number" id="geoRadius" placeholder="120" min="20" max="1000">
+      </div>
+      <div class="geo-admin-field">
+        <label>Menit di area</label>
+        <input type="number" id="geoMinutes" placeholder="3" min="1" max="30">
+      </div>
+    </div>
+    <div class="geo-admin-actions">
+      <button class="btn-add" id="geoUseLocation">Pakai Lokasi Saya Sekarang</button>
+      <button class="btn-add geo-save" id="geoSaveSettings">Simpan Pengaturan</button>
+      <span class="geo-admin-status" id="geoAdminStatus"></span>
+    </div>
+  </div>
+
+  <div class="geo-student-box reveal" id="geoStudentBox" style="display:none;">
+    <div class="geo-student-head">
+      <h4>📍 Absen Otomatis (GPS)</h4>
+      <p>Aktifkan saat kamu sampai di sekolah. Kalau kamu tetap berada di area sekolah selama waktu yang ditentukan, absenmu otomatis tercatat Hadir — tidak perlu tap manual.</p>
+    </div>
+    <button class="btn-add" id="geoActivateBtn">Aktifkan Absen Otomatis</button>
+    <button class="geo-stop-btn" id="geoStopBtn" style="display:none;">Matikan</button>
+    <p class="geo-status-line" id="geoStatusLine"></p>
+  </div>
+
+  <div class="absen-list stagger-container" id="absenList"></div>
+  <p class="absen-note" id="absenNote">Tersimpan otomatis</p>
+</section>
+
+<!-- ================= KEGIATAN ================= -->
+<section class="section" id="kegiatan">
+  <div class="section-head reveal">
+    <div class="eyebrow">Dokumentasi</div>
+    <h2>Kegiatan Kelas</h2>
+    <p>Momen-momen belajar, kerja sama, dan keseruan yang kami rekam sepanjang perjalanan Aventra Class.</p>
+  </div>
+
+  <div class="gallery-grid stagger-container" id="galleryGrid"></div>
+
+  <div class="video-feature reveal">
+    <div class="video-frame tilt" id="videoTrigger">
+      <div class="play-btn" id="playBtn">
+        <svg viewBox="0 0 24 24" fill="#0a0d1a"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+    </div>
+    <div class="vf-text">
+      <div class="role-tag">Video Kegiatan</div>
+      <h3>Perjalanan Aventra Class Sepanjang Semester</h3>
+      <p>Cuplikan kegiatan belajar, proyek kelompok, dan kekompakan kru Aventra selama satu semester terakhir. Ganti frame ini dengan video kegiatan kelas kalian.</p>
+      <div class="tag-row">
+        <span>Proyek Kelas</span>
+        <span>Outing Belajar</span>
+        <span>Lomba Antar Kelas</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PENGUMUMAN (baru) ================= -->
+<section class="section" id="pengumuman">
+  <div class="section-head reveal">
+    <div class="eyebrow">Info Kelas</div>
+    <h2>Papan Pengumuman</h2>
+    <p>Info penting dari admin/pengurus, muncul otomatis secara real-time ke semua anggota kelas.</p>
+  </div>
+
+  <div class="composer-box reveal" id="pengumumanComposer" style="display:none;">
+    <textarea id="pengumumanInput" placeholder="Tulis pengumuman baru untuk kelas..."></textarea>
+    <div class="composer-row" style="align-items:center;">
+      <button class="btn-add" id="pengumumanSubmit">Kirim Pengumuman</button>
+      <span class="admin-only-note">Hanya admin &amp; pengurus kelas yang bisa mengirim &amp; menghapus pengumuman.</span>
+    </div>
+  </div>
+
+  <div class="pengumuman-list stagger-container" id="pengumumanList"></div>
+  <p class="list-empty" id="pengumumanEmpty" style="display:none;">Belum ada pengumuman.</p>
+</section>
+
+<!-- ================= JADWAL PELAJARAN (baru) ================= -->
+<section class="section" id="jadwal">
+  <div class="section-head reveal">
+    <div class="eyebrow">Rutinitas</div>
+    <h2>Jadwal Pelajaran</h2>
+    <p id="jadwalSubText">Jadwal mata pelajaran mingguan kelas Aventra. Tersinkron otomatis ke semua perangkat.</p>
+  </div>
+  <div class="jadwal-grid stagger-container" id="jadwalGrid"></div>
+</section>
+
+<!-- ================= AGENDA KELAS (baru) ================= -->
+<section class="section" id="agenda">
+  <div class="section-head reveal">
+    <div class="eyebrow">Kalender</div>
+    <h2>Agenda Kelas</h2>
+    <p>Tanggal-tanggal penting: ulangan, deadline tugas, dan kegiatan kelas — terurut dari yang terdekat.</p>
+  </div>
+
+  <div class="composer-box reveal" id="agendaComposer" style="display:none;">
+    <div class="composer-row">
+      <input type="text" id="agendaTitleInput" placeholder="Judul agenda (contoh: Ulangan Matematika)">
+      <input type="date" id="agendaDateInput">
+    </div>
+    <textarea id="agendaNoteInput" placeholder="Catatan tambahan (opsional)"></textarea>
+    <div class="composer-row" style="align-items:center;">
+      <button class="btn-add" id="agendaSubmit">Tambah Agenda</button>
+      <span class="admin-only-note">Hanya admin &amp; pengurus kelas yang bisa menambah &amp; menghapus agenda.</span>
+    </div>
+  </div>
+
+  <div class="agenda-list stagger-container" id="agendaList"></div>
+  <p class="list-empty" id="agendaEmpty" style="display:none;">Belum ada agenda mendatang.</p>
+</section>
+
+<!-- ================= LIGHTBOX ================= -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose">✕</button>
+  <div class="lb-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#7c8299" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-4-4 3-3-2-6 5"/></svg>
+    <span id="lbLabel">FOTO-01.JPG</span>
+  </div>
+  <p class="lb-caption" id="lbCaption">Ganti elemen ini dengan foto kegiatan asli kelas kalian.</p>
+</div>
+
+<!-- ================= REKAP BULANAN (MODAL) ================= -->
+<div class="rekap-modal" id="rekapModal">
+  <div class="rekap-panel">
+    <button class="rekap-close" id="rekapClose">✕</button>
+    <div class="rekap-head">
+      <div>
+        <div class="eyebrow" style="margin-bottom:6px;">Rekap Kehadiran</div>
+        <h3 id="rekapTitle">-</h3>
+      </div>
+      <div class="rekap-download-group">
+        <button class="rekap-download" id="rekapDownload" disabled>Unduh CSV</button>
+        <button class="rekap-download rekap-download-pdf" id="rekapDownloadPdf" disabled>Unduh PDF</button>
+      </div>
+    </div>
+    <div id="rekapBody">
+      <p class="rekap-loading" id="rekapLoading">Memuat data...</p>
+      <div class="rekap-table-wrap" id="rekapTableWrap" style="display:none;">
+        <table class="rekap-table">
+          <thead>
+            <tr>
+              <th>No</th><th>Nama</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Belum Tercatat</th><th>% Hadir</th>
+            </tr>
+          </thead>
+          <tbody id="rekapTbody"></tbody>
+        </table>
+      </div>
+      <p class="rekap-empty" id="rekapEmpty" style="display:none;"></p>
+    </div>
+    <div class="rekap-foot">
+      <span class="rekap-note" id="rekapDaysNote"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FOOTER ================= -->
+<footer id="footer">
+  <div class="patch">AV</div>
+  <h4>AVENTRA CLASS</h4>
+  <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
+</footer>
+
+<!--
+  PENTING: config.js dimuat SEBELUM script.js karena script.js membaca
+  window.APP_CONFIG (password admin & PIN murid) dari file ini.
+  config.js sengaja dipisah & didaftarkan di .gitignore supaya tidak
+  ikut ter-upload saat push ke GitHub — TAPI tetap bisa dibaca lewat
+  Inspect/DevTools browser siapa pun yang membuka web ini, karena
+  browser harus mengunduhnya agar login bisa berfungsi.
+-->
+<script src="js/config.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>
