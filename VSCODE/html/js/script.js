@@ -66,6 +66,10 @@ function currentSessionInfo() {
   const s = window.AventraAuth ? window.AventraAuth.getSession() : null;
   if (!s || !s.role) return { role: null, name: null };
   if (s.role === 'admin') return { role: 'admin', name: 'Admin' };
+  // BARU: mode Tamu -- bisa lihat semua data (kayak admin lihat), tapi
+  // tidak bisa klik/ubah apa pun sama sekali. Dipakai warga kelas lain
+  // yang cuma mau memantau, tanpa perlu nama/PIN.
+  if (s.role === 'guest') return { role: 'guest', name: 'Tamu' };
   const role = pengurusNameSet.has((s.name || '').trim().toLowerCase()) ? 'pengurus' : 'student';
   return { role, name: s.name };
 }
@@ -350,7 +354,12 @@ function ensureWeekendBanner() {
 function paintAbsensi(date, session) {
   const dayData = currentDayData || {};
   const isAdmin = session.role === 'admin';
+  const isGuest = session.role === 'guest';
+  // BARU: Tamu melihat daftar lengkap seperti admin (viewAll), tapi
+  // semua tombolnya dikunci (readOnly) -- tidak bisa mengubah apa pun.
+  const viewAll = isAdmin || isGuest;
   const weekend = isWeekendDate(date);
+  const readOnly = weekend || isGuest;
 
   const banner = ensureWeekendBanner();
   if (weekend) {
@@ -362,25 +371,29 @@ function paintAbsensi(date, session) {
 
   absenSubText.textContent = weekend
     ? 'Hari Sabtu/Minggu libur. Kehadiran hanya bisa ditandai pada hari sekolah (Senin–Jumat).'
-    : (isAdmin
-      ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
-      : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`);
+    : isGuest
+      ? 'Kamu login sebagai Tamu — bisa melihat kehadiran seluruh murid secara real-time, tapi tidak bisa mengubah apa pun.'
+      : (isAdmin
+        ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
+        : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`);
 
+  // Rekap bulanan (download CSV/PDF) tetap khusus admin saja -- Tamu
+  // hanya lihat status hari-per-hari, bukan fitur ekspor data.
   rekapBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
-  const visibleStudents = isAdmin
+  const visibleStudents = viewAll
     ? kelasLengkap
     : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
 
   absenList.innerHTML = '';
   visibleStudents.forEach((student) => {
     const globalIndex = kelasLengkap.findIndex(s => s.name === student.name);
-    const isMe = !isAdmin && student.name.trim().toLowerCase() === session.name.trim().toLowerCase();
+    const isMe = !viewAll && student.name.trim().toLowerCase() === session.name.trim().toLowerCase();
     const row = document.createElement('div');
     row.className = 'absen-row stagger-item in' + (isMe ? ' me' : '');
     const num = String(globalIndex + 1).padStart(2, '0');
     const current = dayData[student.name] || '';
-    const disabledAttr = weekend ? 'disabled' : '';
+    const disabledAttr = readOnly ? 'disabled' : '';
     row.innerHTML = `
       <div class="absen-num">${num}</div>
       <div class="absen-name">
@@ -396,8 +409,9 @@ function paintAbsensi(date, session) {
     `;
     row.querySelectorAll('.absen-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        // Sabtu/Minggu: absensi terkunci total, siapa pun rolenya.
-        if (weekend) return;
+        // Sabtu/Minggu terkunci total, dan Tamu tidak pernah boleh
+        // mengubah apa pun, siapa pun rolenya.
+        if (readOnly) return;
         // Murid hanya boleh mengubah barisnya sendiri; admin boleh semua.
         if (!isAdmin && !isMe) return;
         const status = btn.getAttribute('data-s');
@@ -411,18 +425,18 @@ function paintAbsensi(date, session) {
         } catch (e) {
           console.error(e);
           alert('Gagal menyimpan absensi. Cek koneksi internet lalu coba lagi.');
-          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = weekend);
+          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = readOnly);
         }
       });
     });
     absenList.appendChild(row);
   });
-  updateSummary(dayData, isAdmin, session);
+  updateSummary(dayData, viewAll, session);
   updateGeoPanels(date, session);
 }
 
-function updateSummary(dayData, isAdmin, session) {
-  const scope = isAdmin ? kelasLengkap : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
+function updateSummary(dayData, viewAll, session) {
+  const scope = viewAll ? kelasLengkap : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
   const counts = { H: 0, S: 0, I: 0, A: 0 };
   scope.forEach(s => { if (dayData[s.name] && counts[dayData[s.name]] !== undefined) counts[dayData[s.name]]++; });
   const unset = scope.length - (counts.H + counts.S + counts.I + counts.A);
@@ -1155,6 +1169,12 @@ function updateGeoPanels(date, session) {
   const isAdmin = session.role === 'admin';
   geoAdminBox.style.display = isAdmin ? 'block' : 'none';
   if (isAdmin) {
+    geoStudentBox.style.display = 'none';
+    return;
+  }
+  // Tamu cuma memantau, tidak punya PIN/absen sendiri, jadi panel GPS
+  // (yang memang khusus buat murid beneran) tidak relevan untuknya.
+  if (session.role === 'guest') {
     geoStudentBox.style.display = 'none';
     return;
   }
