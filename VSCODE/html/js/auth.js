@@ -118,6 +118,38 @@
     document.dispatchEvent(new CustomEvent('aventra:logout'));
   });
 
+  // ================= MODE TAMU (BARU) =================
+  // Tombol "Lihat sebagai Tamu" -- tanpa nama/PIN, langsung masuk
+  // dengan role 'guest'. Ditambahkan lewat JavaScript (tidak menyentuh
+  // index.html/css) supaya tidak mengubah tata letak yang sudah ada;
+  // tombol dipasang di dalam kotak login yang sama, dan otomatis
+  // meniru gaya tombol "Masuk sebagai Admin" yang sudah ada (memakai
+  // class .login-toggle) supaya tampilannya konsisten tanpa CSS baru.
+  //
+  // Token diisi string tetap 'guest-session' (bukan null) supaya lolos
+  // pengecekan sesi tersimpan di getSession() di atas -- token ini
+  // tidak pernah dipakai untuk memanggil server mana pun, karena Tamu
+  // memang tidak pernah mengirim data, hanya membaca.
+  function doLoginGuest() {
+    const session = { token: 'guest-session', role: 'guest', name: 'Tamu' };
+    saveSession(session);
+    showApp(session);
+  }
+
+  function setupGuestButton() {
+    const loginBoxEl = document.querySelector('.login-box');
+    if (!loginBoxEl || document.getElementById('loginGuestBtn')) return;
+    const guestBtn = document.createElement('button');
+    guestBtn.type = 'button';
+    guestBtn.id = 'loginGuestBtn';
+    guestBtn.className = 'login-toggle';
+    guestBtn.style.marginTop = '8px';
+    guestBtn.textContent = '👀 Lihat sebagai Tamu (tanpa login)';
+    guestBtn.addEventListener('click', doLoginGuest);
+    loginBoxEl.appendChild(guestBtn);
+  }
+  setupGuestButton();
+
   // Cek sesi yang mungkin masih tersimpan (misalnya user refresh halaman)
   const existing = getSession();
   if (existing) {
