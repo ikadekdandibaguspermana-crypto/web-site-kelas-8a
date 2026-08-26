@@ -235,6 +235,16 @@ function todayStr() {
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
 
+// Cek apakah sebuah tanggal (format "YYYY-MM-DD") jatuh di hari Sabtu
+// atau Minggu. Dipakai untuk mengunci fitur absensi (manual & GPS) di
+// akhir pekan, karena memang tidak ada kegiatan sekolah.
+function isWeekendDate(dateStr) {
+  const [y, m, d] = (dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return false;
+  const day = new Date(y, m - 1, d).getDay(); // 0 = Minggu, 6 = Sabtu
+  return day === 0 || day === 6;
+}
+
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
 // Bulan tersedia: dari bulan berjalan sampai jauh ke depan, supaya
@@ -322,12 +332,39 @@ function renderAbsensi() {
   );
 }
 
+// Banner "libur akhir pekan" -- dibuat dinamis lewat JS (tidak menyentuh
+// index.html) dan disisipkan tepat di atas daftar absensi.
+function ensureWeekendBanner() {
+  let el = document.getElementById('absenWeekendBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'absenWeekendBanner';
+    el.style.cssText = 'margin:0 0 14px;padding:10px 14px;border-radius:10px;background:rgba(242,183,5,0.12);border:1px solid rgba(242,183,5,0.35);color:#f2b705;font-size:0.9rem;text-align:center;display:none;';
+    if (absenList && absenList.parentNode) {
+      absenList.parentNode.insertBefore(el, absenList);
+    }
+  }
+  return el;
+}
+
 function paintAbsensi(date, session) {
   const dayData = currentDayData || {};
   const isAdmin = session.role === 'admin';
-  absenSubText.textContent = isAdmin
-    ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
-    : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`;
+  const weekend = isWeekendDate(date);
+
+  const banner = ensureWeekendBanner();
+  if (weekend) {
+    banner.textContent = '🚫 Sabtu & Minggu libur — absensi tidak tersedia untuk tanggal ini.';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  absenSubText.textContent = weekend
+    ? 'Hari Sabtu/Minggu libur. Kehadiran hanya bisa ditandai pada hari sekolah (Senin–Jumat).'
+    : (isAdmin
+      ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
+      : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`);
 
   rekapBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
@@ -343,6 +380,7 @@ function paintAbsensi(date, session) {
     row.className = 'absen-row stagger-item in' + (isMe ? ' me' : '');
     const num = String(globalIndex + 1).padStart(2, '0');
     const current = dayData[student.name] || '';
+    const disabledAttr = weekend ? 'disabled' : '';
     row.innerHTML = `
       <div class="absen-num">${num}</div>
       <div class="absen-name">
@@ -350,14 +388,16 @@ function paintAbsensi(date, session) {
         ${student.jabatan ? `<span>${student.jabatan}</span>` : ''}
       </div>
       <div class="absen-btns">
-        <button class="absen-btn ${current==='H'?'active':''}" data-s="H">Hadir</button>
-        <button class="absen-btn ${current==='S'?'active':''}" data-s="S">Sakit</button>
-        <button class="absen-btn ${current==='I'?'active':''}" data-s="I">Izin</button>
-        <button class="absen-btn ${current==='A'?'active':''}" data-s="A">Alpa</button>
+        <button class="absen-btn ${current==='H'?'active':''}" data-s="H" ${disabledAttr}>Hadir</button>
+        <button class="absen-btn ${current==='S'?'active':''}" data-s="S" ${disabledAttr}>Sakit</button>
+        <button class="absen-btn ${current==='I'?'active':''}" data-s="I" ${disabledAttr}>Izin</button>
+        <button class="absen-btn ${current==='A'?'active':''}" data-s="A" ${disabledAttr}>Alpa</button>
       </div>
     `;
     row.querySelectorAll('.absen-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        // Sabtu/Minggu: absensi terkunci total, siapa pun rolenya.
+        if (weekend) return;
         // Murid hanya boleh mengubah barisnya sendiri; admin boleh semua.
         if (!isAdmin && !isMe) return;
         const status = btn.getAttribute('data-s');
@@ -371,7 +411,7 @@ function paintAbsensi(date, session) {
         } catch (e) {
           console.error(e);
           alert('Gagal menyimpan absensi. Cek koneksi internet lalu coba lagi.');
-          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = false);
+          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = weekend);
         }
       });
     });
@@ -867,6 +907,15 @@ let geoWatchId = null;
 let geoInsideSince = null;
 let geoCountdownTimer = null;
 let geoFirstFixTimer = null;
+// BARU: hitung berapa kali berturut-turut GPS bilang "di luar radius".
+// Sinyal GPS HP sering "meleset" sesaat (jitter) terutama di dekat garis
+// batas radius -- tanpa ini, hitungan mundur bisa reset berkali-kali
+// walau muridnya sebenarnya diam di tempat, sehingga terasa "gak pernah
+// kedeteksi". Baru dianggap benar-benar keluar area setelah 2x bacaan
+// berturut-turut di luar radius.
+let geoOutsideStreak = 0;
+// BARU: kapan terakhir kita kirim lokasi live ke server (untuk radar admin).
+let geoLastLiveWriteTs = 0;
 
 function geofenceDocRef() { return db.collection('settings').doc('geofence'); }
 
@@ -877,6 +926,18 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   const dLng = toRad(lng2 - lng1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// BARU: arah kompas (0-360°, 0 = utara) dari satu titik ke titik lain.
+// Dipakai radar admin untuk menempatkan titik murid di posisi yang benar
+// (bukan cuma jarak, tapi juga arahnya dari sekolah).
+function bearingDegrees(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
 let unsubscribeGeofence = null;
@@ -945,6 +1006,38 @@ function setGeoStatus(msg, type) {
   geoStatusLine.className = 'geo-status-line show' + (type ? ' ' + type : '');
 }
 
+// BARU: kirim lokasi murid ke Firestore supaya admin bisa lihat di radar.
+// Dibatasi maksimal sekali tiap ±4 detik supaya tidak boros kuota Firestore.
+// Hanya berjalan untuk murid (bukan admin) yang sedang aktif melacak.
+function broadcastLiveLocation(pos, dist, acc) {
+  const session = currentSessionInfo();
+  if (!session.role || session.role === 'admin' || !session.name) return;
+  const now = Date.now();
+  if (now - geoLastLiveWriteTs < 4000) return;
+  geoLastLiveWriteTs = now;
+  const bearing = (geofenceSettings && geofenceSettings.lat != null)
+    ? bearingDegrees(geofenceSettings.lat, geofenceSettings.lng, pos.coords.latitude, pos.coords.longitude)
+    : 0;
+  db.collection('liveLocation').doc(session.name).set({
+    name: session.name,
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    dist: Math.round(dist),
+    bearing: Math.round(bearing),
+    acc: acc,
+    updatedAt: now
+  }).catch(e => console.error('liveLocation write:', e));
+}
+
+// BARU: hapus lokasi live murid dari server (dipanggil saat berhenti
+// melacak / sudah absen / logout), supaya admin tidak melihat titik
+// "hantu" yang sudah tidak update.
+function clearLiveLocation() {
+  const session = currentSessionInfo();
+  if (!session.role || session.role === 'admin' || !session.name) return;
+  db.collection('liveLocation').doc(session.name).delete().catch(() => {});
+}
+
 function stopGeoWatch(clearMsg) {
   if (geoWatchId !== null) {
     navigator.geolocation.clearWatch(geoWatchId);
@@ -952,9 +1045,11 @@ function stopGeoWatch(clearMsg) {
   }
   if (geoFirstFixTimer) { clearTimeout(geoFirstFixTimer); geoFirstFixTimer = null; }
   geoInsideSince = null;
+  geoOutsideStreak = 0;
   if (geoCountdownTimer) { clearInterval(geoCountdownTimer); geoCountdownTimer = null; }
   geoActivateBtn.style.display = 'inline-flex';
   geoStopBtn.style.display = 'none';
+  clearLiveLocation();
   if (clearMsg) geoStatusLine.classList.remove('show');
 }
 
@@ -994,15 +1089,34 @@ function handleGeoPosition(pos) {
   const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, geofenceSettings.lat, geofenceSettings.lng);
   const radius = geofenceSettings.radius || 120;
   const acc = Math.round(pos.coords.accuracy || 0);
+
+  // BARU: siarkan posisi ke radar admin (dibatasi otomatis tiap ±4 detik
+  // di dalam fungsinya sendiri).
+  broadcastLiveLocation(pos, dist, acc);
+
+  // DIPERBAIKI: dulu satu bacaan GPS yang meleset sedikit di luar radius
+  // langsung membatalkan hitungan mundur -- padahal HP di titik yang sama
+  // bisa membaca jarak berbeda-beda beberapa meter tiap detik (jitter).
+  // Sekarang baru dianggap "benar-benar keluar" setelah 2x bacaan
+  // berturut-turut di luar radius, supaya lebih tahan terhadap sinyal
+  // GPS yang tidak stabil.
   if (dist <= radius) {
+    geoOutsideStreak = 0;
     if (geoInsideSince === null) geoInsideSince = Date.now();
     tickCountdown();
   } else {
-    if (geoInsideSince !== null) {
+    geoOutsideStreak++;
+    if (geoInsideSince !== null && geoOutsideStreak >= 2) {
       geoInsideSince = null;
       setGeoStatus('📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.', 'warn');
+    } else if (geoInsideSince !== null) {
+      // Baru 1x bacaan di luar radius -- kemungkinan besar cuma jitter
+      // GPS sesaat, jangan langsung dibatalkan dulu.
+      tickCountdown();
     } else {
-      setGeoStatus(`Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`, 'warn');
+      let msg = `Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`;
+      if (acc > 100) msg += ' Sinyal GPS lemah — coba pindah ke tempat terbuka (dekat jendela/luar ruangan) untuk hasil lebih akurat.';
+      setGeoStatus(msg, 'warn');
     }
   }
 }
@@ -1017,6 +1131,7 @@ function handleGeoError(err) {
 }
 
 geoActivateBtn.addEventListener('click', () => {
+  if (isWeekendDate(todayStr())) { alert('Absensi GPS tidak tersedia pada hari Sabtu/Minggu.'); return; }
   if (!navigator.geolocation) { alert('Perangkat/browser ini tidak mendukung deteksi lokasi.'); return; }
   if (!geofenceSettings || geofenceSettings.lat == null) {
     alert('Lokasi sekolah belum diatur oleh admin. Minta admin mengatur lokasi dulu di halaman Absensi.');
@@ -1045,13 +1160,220 @@ function updateGeoPanels(date, session) {
   }
   const isToday = date === todayStr();
   const alreadySet = !!(currentDayData && currentDayData[session.name]);
-  if (isToday && !alreadySet) {
+  const todayIsWeekend = isWeekendDate(todayStr());
+  if (isToday && !alreadySet && !todayIsWeekend) {
     geoStudentBox.style.display = 'block';
   } else {
     geoStudentBox.style.display = 'none';
-    if (alreadySet) stopGeoWatch(true);
+    if (alreadySet || todayIsWeekend) stopGeoWatch(true);
   }
 }
+
+// ================= RADAR LOKASI LIVE (ADMIN) — FITUR BARU =================
+// Menampilkan posisi murid yang sedang mengaktifkan absen GPS sebagai
+// titik pada radar melingkar, dihitung dari jarak & arah asli terhadap
+// titik sekolah (bukan posisi acak). Murni tambahan: semua elemen dibuat
+// lewat JavaScript saja, tidak menyentuh index.html atau css/style.css.
+//
+// Warna titik:
+//   merah   = masih jauh dari sekolah
+//   kuning  = sudah mendekat
+//   hijau menyala = sudah di dalam radius sekolah (hitungan auto-absen jalan)
+//
+// CATATAN PENTING: fitur ini menulis & membaca koleksi Firestore baru
+// bernama "liveLocation". Kalau Firestore Security Rules di project
+// "ombak-nusantara" dibatasi per nama koleksi (whitelist), tambahkan
+// "liveLocation" ke daftar koleksi yang boleh dibaca/ditulis, sama
+// seperti "absensi", "pengumuman", "jadwal", "agenda", dan "settings".
+(function initGeoRadar() {
+  let radarBtn = null;
+  let radarModal = null;
+  let radarSvg = null;
+  let radarListUnsub = null;
+  let radarStyleInjected = false;
+
+  function injectRadarStyle() {
+    if (radarStyleInjected) return;
+    radarStyleInjected = true;
+    const style = document.createElement('style');
+    style.textContent = `
+      .geo-radar-btn{margin-top:10px;padding:10px 16px;border-radius:10px;border:1px solid rgba(242,183,5,0.4);background:rgba(242,183,5,0.12);color:#f2b705;font-weight:600;cursor:pointer;font-size:0.9rem;}
+      .geo-radar-btn:hover{background:rgba(242,183,5,0.22);}
+      .geo-radar-overlay{position:fixed;inset:0;background:rgba(6,8,18,0.78);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+      .geo-radar-panel{background:#0e1220;border:1px solid rgba(242,183,5,0.25);border-radius:18px;padding:22px;max-width:520px;width:100%;max-height:90vh;overflow:auto;}
+      .geo-radar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+      .geo-radar-head h3{margin:0;color:#f5f3ec;font-size:1.1rem;}
+      .geo-radar-close{background:none;border:none;color:#f5f3ec;font-size:1.4rem;cursor:pointer;line-height:1;}
+      .geo-radar-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:0.78rem;color:#c9c6bb;}
+      .geo-radar-legend span{display:inline-flex;align-items:center;gap:6px;}
+      .geo-radar-dotlegend{width:10px;height:10px;border-radius:50%;display:inline-block;}
+      .geo-radar-empty{color:#c9c6bb;font-size:0.85rem;text-align:center;padding:18px 0;}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function buildRadarSvg() {
+    const size = 320, c = size / 2;
+    const svgns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('width', '100%');
+    svg.style.maxWidth = '320px';
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
+
+    // Lingkaran jarak (ring) referensi + titik pusat sekolah.
+    [1, 0.66, 0.33].forEach((f) => {
+      const ring = document.createElementNS(svgns, 'circle');
+      ring.setAttribute('cx', c); ring.setAttribute('cy', c);
+      ring.setAttribute('r', c * f * 0.92);
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', 'rgba(242,183,5,0.22)');
+      ring.setAttribute('stroke-width', '1');
+      svg.appendChild(ring);
+    });
+    const center = document.createElementNS(svgns, 'circle');
+    center.setAttribute('cx', c); center.setAttribute('cy', c); center.setAttribute('r', 5);
+    center.setAttribute('fill', '#f2b705');
+    svg.appendChild(center);
+    const centerLabel = document.createElementNS(svgns, 'text');
+    centerLabel.setAttribute('x', c); centerLabel.setAttribute('y', c + 18);
+    centerLabel.setAttribute('text-anchor', 'middle');
+    centerLabel.setAttribute('fill', '#f2b705');
+    centerLabel.setAttribute('font-size', '10');
+    centerLabel.textContent = 'Sekolah';
+    svg.appendChild(centerLabel);
+
+    return { svg, size, c };
+  }
+
+  function dotColor(dist, radius) {
+    if (dist <= radius) return '#22c55e';       // hijau: sudah di dalam radius sekolah
+    if (dist <= radius * 2.5) return '#eab308';  // kuning: sedang mendekat
+    return '#ef4444';                            // merah: masih jauh
+  }
+
+  function renderRadar(docs) {
+    if (!radarSvg) return;
+    const { svg, c } = radarSvg;
+    svg.querySelectorAll('.geo-dot, .geo-dot-label').forEach(n => n.remove());
+
+    const emptyEl = radarModal.querySelector('.geo-radar-empty');
+    if (!geofenceSettings || geofenceSettings.lat == null) {
+      emptyEl.textContent = 'Atur & simpan lokasi sekolah dulu supaya radar bisa menghitung jarak murid.';
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    const radius = geofenceSettings.radius || 120;
+    const now = Date.now();
+    // Anggap "offline" kalau sudah lebih dari 25 detik tidak mengirim
+    // update posisi (misalnya tab murid ditutup / sinyal internet putus).
+    const active = docs.filter(d => now - (d.updatedAt || 0) < 25000);
+
+    if (active.length === 0) {
+      emptyEl.textContent = 'Belum ada murid yang mengaktifkan absen GPS saat ini.';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    const maxR = c * 0.92;
+    const svgns = 'http://www.w3.org/2000/svg';
+
+    active.forEach((d) => {
+      const dist = d.dist || 0;
+      const bearing = d.bearing || 0;
+      // Skala jarak asli (meter) ke radar: radius sekolah = 40% radar,
+      // 2.5x radius = tepi radar. Murid yang sangat jauh tetap kelihatan
+      // menempel di tepi (tidak hilang dari layar).
+      const scaleDist = Math.min(dist / (radius * 2.5), 1) * maxR;
+      const rad = (bearing - 90) * Math.PI / 180; // 0° = utara, diarahkan ke atas layar
+      const x = c + scaleDist * Math.cos(rad);
+      const y = c + scaleDist * Math.sin(rad);
+
+      const dot = document.createElementNS(svgns, 'circle');
+      dot.setAttribute('class', 'geo-dot');
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      dot.setAttribute('r', dist <= radius ? 7 : 6);
+      dot.setAttribute('fill', dotColor(dist, radius));
+      if (dist <= radius) {
+        dot.style.filter = 'drop-shadow(0 0 5px rgba(34,197,94,0.9))';
+      }
+      svg.appendChild(dot);
+
+      const label = document.createElementNS(svgns, 'text');
+      label.setAttribute('class', 'geo-dot-label');
+      label.setAttribute('x', x); label.setAttribute('y', y - 10);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('fill', '#f5f3ec');
+      label.setAttribute('font-size', '9');
+      label.textContent = `${(d.name || '').split(' ')[0]} (${dist}m)`;
+      svg.appendChild(label);
+    });
+  }
+
+  function openRadar() {
+    if (!radarModal) {
+      injectRadarStyle();
+      const overlay = document.createElement('div');
+      overlay.className = 'geo-radar-overlay';
+      overlay.innerHTML = `
+        <div class="geo-radar-panel">
+          <div class="geo-radar-head">
+            <h3>🛰️ Radar Lokasi Murid (Live)</h3>
+            <button class="geo-radar-close" type="button">✕</button>
+          </div>
+          <div class="geo-radar-svg-wrap"></div>
+          <div class="geo-radar-empty"></div>
+          <div class="geo-radar-legend">
+            <span><i class="geo-radar-dotlegend" style="background:#ef4444;"></i> Masih jauh</span>
+            <span><i class="geo-radar-dotlegend" style="background:#eab308;"></i> Mendekat</span>
+            <span><i class="geo-radar-dotlegend" style="background:#22c55e;"></i> Di dalam radius sekolah</span>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      radarModal = overlay;
+      radarSvg = buildRadarSvg();
+      overlay.querySelector('.geo-radar-svg-wrap').appendChild(radarSvg.svg);
+      overlay.querySelector('.geo-radar-close').addEventListener('click', closeRadar);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRadar(); });
+    }
+    radarModal.style.display = 'flex';
+    if (!radarListUnsub) {
+      radarListUnsub = db.collection('liveLocation').onSnapshot(snap => {
+        const docs = [];
+        snap.forEach(doc => docs.push(doc.data()));
+        renderRadar(docs);
+      }, err => console.error('liveLocation listen:', err));
+    }
+  }
+
+  function closeRadar() {
+    if (radarModal) radarModal.style.display = 'none';
+    if (radarListUnsub) { radarListUnsub(); radarListUnsub = null; }
+  }
+
+  function ensureRadarButton() {
+    if (radarBtn || !geoAdminBox) return;
+    injectRadarStyle();
+    radarBtn = document.createElement('button');
+    radarBtn.type = 'button';
+    radarBtn.className = 'geo-radar-btn';
+    radarBtn.textContent = '🛰️ Lacak Lokasi Murid (Live)';
+    radarBtn.addEventListener('click', openRadar);
+    geoAdminBox.appendChild(radarBtn);
+  }
+
+  document.addEventListener('aventra:login', () => {
+    if (currentSessionInfo().role === 'admin') ensureRadarButton();
+  });
+  if (window.AventraAuth && window.AventraAuth.getSession() && currentSessionInfo().role === 'admin') {
+    ensureRadarButton();
+  }
+
+  document.addEventListener('aventra:logout', closeRadar);
+})();
 
 // ================= HUBUNGKAN KE STATUS LOGIN (auth.js) =================
 // auth.js mengurus login/logout & tampil-sembunyi gerbang login. File ini
