@@ -1,4 +1,3 @@
-// ================= FIREBASE / FIRESTORE =================
 const firebaseConfig = {
   apiKey: "AIzaSyAruYX883CuAYkes1Uq-eYt7ZgpWR0iUG4",
   authDomain: "ombak-nusantara.firebaseapp.com",
@@ -10,19 +9,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-// Setiap tanggal = satu dokumen di koleksi "absensi", field = nama murid -> status (H/S/I/A)
 function absenDocRef(dateStr) { return db.collection('absensi').doc(dateStr); }
 
-// ================= AUTH / SESSION =================
-// PENTING: Login (nama+PIN murid / password admin) SEPENUHNYA ditangani
-// oleh js/auth.js, yang mengeceknya lewat server (Netlify Function).
-// File ini TIDAK PERNAH menyimpan atau membaca PIN/password mentah --
-// file ini hanya membaca status sesi yang sudah berhasil login lewat
-// window.AventraAuth (disediakan oleh auth.js).
-
-// Full roster used both for the "Daftar Anggota Kelas" grid and as the
-// master name list for login + absensi (kept in sync so the name typed
-// at login always matches a real row in absensi).
 const roster = [
   "Casey","Redi","Rizki","Alit Payama",
   "Novi","Ary",
@@ -34,8 +22,6 @@ const roster = [
   "Desita","Damay","Felii","Aldo"
 ];
 
-// Pengurus inti — nama lengkap disamakan dengan kartu profil di atas
-// supaya nama yang dipakai untuk login = nama yang tampil di struktur kelas.
 const pengurus = [
   { name: "Ni Ketut Nindia Candra Dewi", jabatan: "Ketua Kelas" },
   { name: "I Ketut Anna Ary Sudana Putra", jabatan: "Wakil Ketua" },
@@ -58,17 +44,10 @@ function findStudentByName(typed) {
 
 const pengurusNameSet = new Set(pengurus.map(p => p.name.trim().toLowerCase()));
 
-// Baca status login dari auth.js. Mengembalikan role 'admin', 'pengurus',
-// 'student', atau null kalau belum login. 'pengurus' dipakai untuk kartu
-// pengurus inti supaya mereka bisa kelola Pengumuman/Jadwal/Agenda, tapi
-// tetap seperti murid biasa untuk Absensi (hanya tandai dirinya sendiri).
 function currentSessionInfo() {
   const s = window.AventraAuth ? window.AventraAuth.getSession() : null;
   if (!s || !s.role) return { role: null, name: null };
   if (s.role === 'admin') return { role: 'admin', name: 'Admin' };
-  // BARU: mode Tamu -- bisa lihat semua data (kayak admin lihat), tapi
-  // tidak bisa klik/ubah apa pun sama sekali. Dipakai warga kelas lain
-  // yang cuma mau memantau, tanpa perlu nama/PIN.
   if (s.role === 'guest') return { role: 'guest', name: 'Tamu' };
   const role = pengurusNameSet.has((s.name || '').trim().toLowerCase()) ? 'pengurus' : 'student';
   return { role, name: s.name };
@@ -82,25 +61,16 @@ function canManageInfo() {
   return r === 'admin' || r === 'pengurus';
 }
 
-// ---------- Roster grid (Daftar Anggota Kelas) ----------
-// CATATAN KEAMANAN: PIN murid TIDAK ditampilkan di sini lagi (dan di
-// mana pun di halaman ini). Menampilkan PIN dalam bentuk teks di halaman
-// -- walau di balik login sekalipun -- membuatnya bisa dibaca lewat
-// Inspect/DevTools oleh siapa saja yang membuka halaman ini, persis
-// seperti masalah keamanan yang sedang kita perbaiki. Kalau ada murid
-// lupa PIN, itu hanya bisa dicek/diubah langsung oleh admin lewat
-// Netlify Environment Variables, bukan ditampilkan di web.
 const rosterGrid = document.getElementById('rosterGrid');
 document.getElementById('rosterCount').textContent = roster.length;
 roster.forEach((name, i) => {
   const card = document.createElement('div');
   card.className = 'roster-card stagger-item';
-  const num = String(i + 1).padStart(2, '0'); // nomor absen anggota, dimulai dari 01
+  const num = String(i + 1).padStart(2, '0');
   card.innerHTML = `<div class="roster-id">${num}</div><div class="roster-info"><span>${name}</span></div>`;
   rosterGrid.appendChild(card);
 });
 
-// ---------- Gallery placeholders ----------
 const galleryCaptions = [
   "Kerja Kelompok Proyek Sains",
   "Outing Class ke Museum",
@@ -123,7 +93,6 @@ galleryCaptions.forEach((cap, i) => {
   galleryGrid.appendChild(item);
 });
 
-// ---------- Lightbox ----------
 const lightbox = document.getElementById('lightbox');
 const lbLabel = document.getElementById('lbLabel');
 const lbCaption = document.getElementById('lbCaption');
@@ -143,7 +112,6 @@ document.getElementById('videoTrigger').addEventListener('click', () => {
   lightbox.classList.add('open');
 });
 
-// ---------- Navbar scroll state + parallax orbs ----------
 const navWrap = document.getElementById('navWrap');
 const orbOne = document.querySelector('.glow-orb.one');
 const orbTwo = document.querySelector('.glow-orb.two');
@@ -157,7 +125,6 @@ window.addEventListener('scroll', () => {
   }
 }, { passive: true });
 
-// ---------- Mobile menu ----------
 const burgerBtn = document.getElementById('burgerBtn');
 const mobileMenu = document.getElementById('mobileMenu');
 burgerBtn.addEventListener('click', () => {
@@ -169,7 +136,6 @@ mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => 
   burgerBtn.classList.remove('active');
 }));
 
-// ---------- Hero cursor spotlight ----------
 const spotlight = document.getElementById('spotlight');
 const heroEl = document.getElementById('beranda');
 if (!reduceMotion && spotlight) {
@@ -180,7 +146,6 @@ if (!reduceMotion && spotlight) {
   });
 }
 
-// ---------- Animated stat counters ----------
 document.querySelectorAll('.stat-chip b[data-count]').forEach(b => {
   const target = parseInt(b.getAttribute('data-count'), 10);
   if (reduceMotion) { b.textContent = target; return; }
@@ -197,7 +162,6 @@ document.querySelectorAll('.stat-chip b[data-count]').forEach(b => {
   }, 750);
 });
 
-// ---------- Tilt / magnetic hover on cards ----------
 if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
   document.querySelectorAll('.tilt').forEach(el => {
     el.addEventListener('mousemove', (e) => {
@@ -210,7 +174,6 @@ if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
   });
 }
 
-// ---------- Staggered grid reveal ----------
 const staggerObs = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -225,7 +188,6 @@ const staggerObs = new IntersectionObserver((entries) => {
 }, { threshold: 0.08 });
 document.querySelectorAll('.stagger-container').forEach(c => staggerObs.observe(c));
 
-// ================= DAFTAR ABSENSI (real-time via Firestore) =================
 const absenMonthSelect = document.getElementById('absenMonth');
 const absenDateInput = document.getElementById('absenDate');
 const absenList = document.getElementById('absenList');
@@ -239,20 +201,15 @@ function todayStr() {
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
 
-// Cek apakah sebuah tanggal (format "YYYY-MM-DD") jatuh di hari Sabtu
-// atau Minggu. Dipakai untuk mengunci fitur absensi (manual & GPS) di
-// akhir pekan, karena memang tidak ada kegiatan sekolah.
 function isWeekendDate(dateStr) {
   const [y, m, d] = (dateStr || '').split('-').map(Number);
   if (!y || !m || !d) return false;
-  const day = new Date(y, m - 1, d).getDay(); // 0 = Minggu, 6 = Sabtu
+  const day = new Date(y, m - 1, d).getDay();
   return day === 0 || day === 6;
 }
 
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
-// Bulan tersedia: dari bulan berjalan sampai jauh ke depan, supaya
-// praktis "selamanya" tidak pernah kehabisan pilihan bulan.
 function buildMonthOptions() {
   const now = new Date();
   const startY = now.getFullYear(), startM = now.getMonth();
@@ -281,8 +238,6 @@ function clampDateToMonth(dateStr, monthVal) {
 
 absenDateInput.value = todayStr();
 
-// Kalau tab dibiarkan terbuka melewati tengah malam, otomatis majukan
-// tanggal ke "hari ini" yang baru.
 let lastKnownToday = todayStr();
 setInterval(() => {
   const nowToday = todayStr();
@@ -307,13 +262,12 @@ absenDateInput.addEventListener('change', () => {
   renderAbsensi();
 });
 
-// Listener real-time Firestore untuk tanggal yang sedang aktif.
 let unsubscribeAbsen = null;
 let currentDayData = {};
 
 function renderAbsensi() {
   const session = currentSessionInfo();
-  if (!session.role) return; // belum login, jangan render dulu
+  if (!session.role) return;
 
   const date = absenDateInput.value || todayStr();
 
@@ -336,8 +290,6 @@ function renderAbsensi() {
   );
 }
 
-// Banner "libur akhir pekan" -- dibuat dinamis lewat JS (tidak menyentuh
-// index.html) dan disisipkan tepat di atas daftar absensi.
 function ensureWeekendBanner() {
   let el = document.getElementById('absenWeekendBanner');
   if (!el) {
@@ -355,8 +307,6 @@ function paintAbsensi(date, session) {
   const dayData = currentDayData || {};
   const isAdmin = session.role === 'admin';
   const isGuest = session.role === 'guest';
-  // BARU: Tamu melihat daftar lengkap seperti admin (viewAll), tapi
-  // semua tombolnya dikunci (readOnly) -- tidak bisa mengubah apa pun.
   const viewAll = isAdmin || isGuest;
   const weekend = isWeekendDate(date);
   const readOnly = weekend || isGuest;
@@ -377,8 +327,6 @@ function paintAbsensi(date, session) {
         ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
         : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`);
 
-  // Rekap bulanan (download CSV/PDF) tetap khusus admin saja -- Tamu
-  // hanya lihat status hari-per-hari, bukan fitur ekspor data.
   rekapBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
   const visibleStudents = viewAll
@@ -409,10 +357,7 @@ function paintAbsensi(date, session) {
     `;
     row.querySelectorAll('.absen-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        // Sabtu/Minggu terkunci total, dan Tamu tidak pernah boleh
-        // mengubah apa pun, siapa pun rolenya.
         if (readOnly) return;
-        // Murid hanya boleh mengubah barisnya sendiri; admin boleh semua.
         if (!isAdmin && !isMe) return;
         const status = btn.getAttribute('data-s');
         const newValue = dayData[student.name] === status
@@ -455,7 +400,6 @@ function flashSaved(date) {
   flashTimer = setTimeout(() => absenNote.classList.remove('show'), 1600);
 }
 
-// ================= REKAP BULANAN =================
 const rekapBtn = document.getElementById('rekapBtn');
 const rekapModal = document.getElementById('rekapModal');
 const rekapClose = document.getElementById('rekapClose');
@@ -468,15 +412,15 @@ const rekapDownload = document.getElementById('rekapDownload');
 const rekapDaysNote = document.getElementById('rekapDaysNote');
 const rekapDownloadPdfBtn = document.getElementById('rekapDownloadPdf');
 
-let rekapCurrentData = null; // dipakai saat export CSV/PDF
+let rekapCurrentData = null;
 
-function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); } // m: 1-12
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
 
 async function openRekap() {
   const session = currentSessionInfo();
-  if (session.role !== 'admin') return; // rekap hanya untuk admin
+  if (session.role !== 'admin') return;
 
-  const monthVal = absenMonthSelect.value; // format "YYYY-MM"
+  const monthVal = absenMonthSelect.value;
   const [y, m] = monthVal.split('-').map(Number);
   rekapTitle.textContent = `${bulanNama[m - 1]} ${y}`;
   rekapDaysNote.textContent = '';
@@ -508,7 +452,7 @@ async function openRekap() {
     }
 
     const recordedDays = snap.size;
-    const counts = {}; // nama -> {H,S,I,A}
+    const counts = {};
     kelasLengkap.forEach(s => { counts[s.name] = { H: 0, S: 0, I: 0, A: 0 }; });
 
     snap.forEach(doc => {
@@ -612,7 +556,6 @@ absenResetBtn.addEventListener('click', async () => {
   }
 });
 
-// ---------- Active link on scroll ----------
 const sections = document.querySelectorAll('section[id], header[id]');
 const navA = document.querySelectorAll('.nav-links a');
 const spy = new IntersectionObserver((entries) => {
@@ -626,7 +569,6 @@ const spy = new IntersectionObserver((entries) => {
 }, { rootMargin: '-45% 0px -45% 0px' });
 sections.forEach(s => spy.observe(s));
 
-// ---------- Reveal on scroll ----------
 const revealEls = document.querySelectorAll('.reveal');
 const revealer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
@@ -638,7 +580,6 @@ const revealer = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 revealEls.forEach(el => revealer.observe(el));
 
-// ---------- Tema Terang / Gelap ----------
 const THEME_KEY = 'aventraTheme';
 const themeToggleBtn = document.getElementById('themeToggle');
 function applyTheme(theme) {
@@ -656,7 +597,6 @@ themeToggleBtn.addEventListener('click', () => {
   try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
 });
 
-// ================= PAPAN PENGUMUMAN =================
 const pengumumanComposer = document.getElementById('pengumumanComposer');
 const pengumumanInput = document.getElementById('pengumumanInput');
 const pengumumanSubmit = document.getElementById('pengumumanSubmit');
@@ -710,7 +650,7 @@ function renderPengumuman(snap) {
 
 let unsubscribePengumuman = null;
 function listenPengumuman() {
-  if (unsubscribePengumuman) return; // sudah jalan, jangan dobel
+  if (unsubscribePengumuman) return;
   unsubscribePengumuman = db.collection('pengumuman').orderBy('createdAtMs', 'desc').limit(50)
     .onSnapshot(renderPengumuman, (err) => console.error('pengumuman:', err));
 }
@@ -734,7 +674,6 @@ pengumumanSubmit.addEventListener('click', async () => {
   pengumumanSubmit.disabled = false;
 });
 
-// ================= JADWAL PELAJARAN =================
 const jadwalGrid = document.getElementById('jadwalGrid');
 const jadwalSubText = document.getElementById('jadwalSubText');
 const hariList = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -820,7 +759,6 @@ function listenJadwal() {
   }, err => console.error('jadwal:', err));
 }
 
-// ================= AGENDA KELAS =================
 const agendaComposer = document.getElementById('agendaComposer');
 const agendaTitleInput = document.getElementById('agendaTitleInput');
 const agendaDateInput = document.getElementById('agendaDateInput');
@@ -842,7 +780,7 @@ function renderAgenda(snap) {
   snap.forEach((doc, i) => {
     const d = doc.data();
     const isPast = d.date && d.date < todayId;
-    const dateParts = (d.date || '').split('-'); // YYYY-MM-DD
+    const dateParts = (d.date || '').split('-');
     const dayNum = dateParts[2] || '--';
     const monLabel = dateParts[1] ? bulanSingkat[parseInt(dateParts[1], 10) - 1] : '';
     const item = document.createElement('div');
@@ -899,10 +837,6 @@ agendaSubmit.addEventListener('click', async () => {
   agendaSubmit.disabled = false;
 });
 
-// ================= ABSEN OTOMATIS GPS (GEOFENCE) =================
-// Admin mengatur satu titik lokasi + radius sekolah (koleksi Firestore
-// "settings", dokumen "geofence"). Siswa yang bertahan di dalam radius
-// itu selama N menit akan otomatis tercatat Hadir untuk tanggal hari ini.
 const geoAdminBox = document.getElementById('geoAdminBox');
 const geoStudentBox = document.getElementById('geoStudentBox');
 const geoLatInput = document.getElementById('geoLat');
@@ -916,19 +850,12 @@ const geoActivateBtn = document.getElementById('geoActivateBtn');
 const geoStopBtn = document.getElementById('geoStopBtn');
 const geoStatusLine = document.getElementById('geoStatusLine');
 
-let geofenceSettings = null; // {lat,lng,radius,minutes}
+let geofenceSettings = null;
 let geoWatchId = null;
 let geoInsideSince = null;
 let geoCountdownTimer = null;
 let geoFirstFixTimer = null;
-// BARU: hitung berapa kali berturut-turut GPS bilang "di luar radius".
-// Sinyal GPS HP sering "meleset" sesaat (jitter) terutama di dekat garis
-// batas radius -- tanpa ini, hitungan mundur bisa reset berkali-kali
-// walau muridnya sebenarnya diam di tempat, sehingga terasa "gak pernah
-// kedeteksi". Baru dianggap benar-benar keluar area setelah 2x bacaan
-// berturut-turut di luar radius.
 let geoOutsideStreak = 0;
-// BARU: kapan terakhir kita kirim lokasi live ke server (untuk radar admin).
 let geoLastLiveWriteTs = 0;
 
 function geofenceDocRef() { return db.collection('settings').doc('geofence'); }
@@ -942,9 +869,6 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// BARU: arah kompas (0-360°, 0 = utara) dari satu titik ke titik lain.
-// Dipakai radar admin untuk menempatkan titik murid di posisi yang benar
-// (bukan cuma jarak, tapi juga arahnya dari sekolah).
 function bearingDegrees(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180;
   const toDeg = r => r * 180 / Math.PI;
@@ -980,7 +904,7 @@ geoUseLocationBtn.addEventListener('click', () => {
       geoLngInput.value = pos.coords.longitude.toFixed(6);
       const acc = Math.round(pos.coords.accuracy);
       if (acc > 300) {
-        geoAdminStatus.innerHTML = `⚠️ Akurasi lemah (±${acc}m) — kemungkinan besar perangkat ini tidak punya GPS asli (laptop/PC hanya menebak dari WiFi). Sebaiknya ulangi langkah ini pakai HP sambil berdiri di sekolah, baru klik Simpan.`;
+        geoAdminStatus.innerHTML = `⚠️ Akurasi lemah (±${acc}m) — kemungkinan besar perangkat ini tidak punya GPS asli. Sebaiknya ulangi pakai HP sambil berdiri di sekolah, baru klik Simpan.`;
         geoAdminStatus.style.color = 'var(--gold-soft)';
       } else {
         geoAdminStatus.innerHTML = `Lokasi terdeteksi (akurasi ±${acc}m). Klik Simpan Pengaturan.`;
@@ -1020,9 +944,6 @@ function setGeoStatus(msg, type) {
   geoStatusLine.className = 'geo-status-line show' + (type ? ' ' + type : '');
 }
 
-// BARU: kirim lokasi murid ke Firestore supaya admin bisa lihat di radar.
-// Dibatasi maksimal sekali tiap ±4 detik supaya tidak boros kuota Firestore.
-// Hanya berjalan untuk murid (bukan admin) yang sedang aktif melacak.
 function broadcastLiveLocation(pos, dist, acc) {
   const session = currentSessionInfo();
   if (!session.role || session.role === 'admin' || !session.name) return;
@@ -1043,9 +964,6 @@ function broadcastLiveLocation(pos, dist, acc) {
   }).catch(e => console.error('liveLocation write:', e));
 }
 
-// BARU: hapus lokasi live murid dari server (dipanggil saat berhenti
-// melacak / sudah absen / logout), supaya admin tidak melihat titik
-// "hantu" yang sudah tidak update.
 function clearLiveLocation() {
   const session = currentSessionInfo();
   if (!session.role || session.role === 'admin' || !session.name) return;
@@ -1104,16 +1022,8 @@ function handleGeoPosition(pos) {
   const radius = geofenceSettings.radius || 120;
   const acc = Math.round(pos.coords.accuracy || 0);
 
-  // BARU: siarkan posisi ke radar admin (dibatasi otomatis tiap ±4 detik
-  // di dalam fungsinya sendiri).
   broadcastLiveLocation(pos, dist, acc);
 
-  // DIPERBAIKI: dulu satu bacaan GPS yang meleset sedikit di luar radius
-  // langsung membatalkan hitungan mundur -- padahal HP di titik yang sama
-  // bisa membaca jarak berbeda-beda beberapa meter tiap detik (jitter).
-  // Sekarang baru dianggap "benar-benar keluar" setelah 2x bacaan
-  // berturut-turut di luar radius, supaya lebih tahan terhadap sinyal
-  // GPS yang tidak stabil.
   if (dist <= radius) {
     geoOutsideStreak = 0;
     if (geoInsideSince === null) geoInsideSince = Date.now();
@@ -1124,12 +1034,10 @@ function handleGeoPosition(pos) {
       geoInsideSince = null;
       setGeoStatus('📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.', 'warn');
     } else if (geoInsideSince !== null) {
-      // Baru 1x bacaan di luar radius -- kemungkinan besar cuma jitter
-      // GPS sesaat, jangan langsung dibatalkan dulu.
       tickCountdown();
     } else {
       let msg = `Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`;
-      if (acc > 100) msg += ' Sinyal GPS lemah — coba pindah ke tempat terbuka (dekat jendela/luar ruangan) untuk hasil lebih akurat.';
+      if (acc > 100) msg += ' Sinyal GPS lemah — coba pindah ke tempat terbuka untuk hasil lebih akurat.';
       setGeoStatus(msg, 'warn');
     }
   }
@@ -1155,7 +1063,7 @@ geoActivateBtn.addEventListener('click', () => {
   geoStopBtn.style.display = 'inline-block';
   setGeoStatus('Meminta izin lokasi...', 'warn');
   geoFirstFixTimer = setTimeout(() => {
-    setGeoStatus('Masih mencari sinyal GPS... ini wajar sampai 30 detik, terutama di dalam ruangan. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.', 'warn');
+    setGeoStatus('Masih mencari sinyal GPS... ini wajar sampai 30 detik. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.', 'warn');
   }, 6000);
   geoWatchId = navigator.geolocation.watchPosition(handleGeoPosition, handleGeoError, {
     enableHighAccuracy: true, maximumAge: 5000, timeout: 30000
@@ -1172,8 +1080,6 @@ function updateGeoPanels(date, session) {
     geoStudentBox.style.display = 'none';
     return;
   }
-  // Tamu cuma memantau, tidak punya PIN/absen sendiri, jadi panel GPS
-  // (yang memang khusus buat murid beneran) tidak relevan untuknya.
   if (session.role === 'guest') {
     geoStudentBox.style.display = 'none';
     return;
@@ -1189,22 +1095,8 @@ function updateGeoPanels(date, session) {
   }
 }
 
-// ================= RADAR LOKASI LIVE (ADMIN) — FITUR BARU =================
-// Menampilkan posisi murid yang sedang mengaktifkan absen GPS sebagai
-// titik pada radar melingkar, dihitung dari jarak & arah asli terhadap
-// titik sekolah (bukan posisi acak). Murni tambahan: semua elemen dibuat
-// lewat JavaScript saja, tidak menyentuh index.html atau css/style.css.
-//
-// Warna titik:
-//   merah   = masih jauh dari sekolah
-//   kuning  = sudah mendekat
-//   hijau menyala = sudah di dalam radius sekolah (hitungan auto-absen jalan)
-//
-// CATATAN PENTING: fitur ini menulis & membaca koleksi Firestore baru
-// bernama "liveLocation". Kalau Firestore Security Rules di project
-// "ombak-nusantara" dibatasi per nama koleksi (whitelist), tambahkan
-// "liveLocation" ke daftar koleksi yang boleh dibaca/ditulis, sama
-// seperti "absensi", "pengumuman", "jadwal", "agenda", dan "settings".
+// Fitur radar butuh koleksi Firestore "liveLocation" -- kalau kosong terus,
+// cek Firestore Security Rules sudah izinkan koleksi ini.
 (function initGeoRadar() {
   let radarBtn = null;
   let radarModal = null;
@@ -1242,7 +1134,6 @@ function updateGeoPanels(date, session) {
     svg.style.display = 'block';
     svg.style.margin = '0 auto';
 
-    // Lingkaran jarak (ring) referensi + titik pusat sekolah.
     [1, 0.66, 0.33].forEach((f) => {
       const ring = document.createElementNS(svgns, 'circle');
       ring.setAttribute('cx', c); ring.setAttribute('cy', c);
@@ -1268,9 +1159,9 @@ function updateGeoPanels(date, session) {
   }
 
   function dotColor(dist, radius) {
-    if (dist <= radius) return '#22c55e';       // hijau: sudah di dalam radius sekolah
-    if (dist <= radius * 2.5) return '#eab308';  // kuning: sedang mendekat
-    return '#ef4444';                            // merah: masih jauh
+    if (dist <= radius) return '#22c55e';
+    if (dist <= radius * 2.5) return '#eab308';
+    return '#ef4444';
   }
 
   function renderRadar(docs) {
@@ -1287,8 +1178,6 @@ function updateGeoPanels(date, session) {
 
     const radius = geofenceSettings.radius || 120;
     const now = Date.now();
-    // Anggap "offline" kalau sudah lebih dari 25 detik tidak mengirim
-    // update posisi (misalnya tab murid ditutup / sinyal internet putus).
     const active = docs.filter(d => now - (d.updatedAt || 0) < 25000);
 
     if (active.length === 0) {
@@ -1304,11 +1193,8 @@ function updateGeoPanels(date, session) {
     active.forEach((d) => {
       const dist = d.dist || 0;
       const bearing = d.bearing || 0;
-      // Skala jarak asli (meter) ke radar: radius sekolah = 40% radar,
-      // 2.5x radius = tepi radar. Murid yang sangat jauh tetap kelihatan
-      // menempel di tepi (tidak hilang dari layar).
       const scaleDist = Math.min(dist / (radius * 2.5), 1) * maxR;
-      const rad = (bearing - 90) * Math.PI / 180; // 0° = utara, diarahkan ke atas layar
+      const rad = (bearing - 90) * Math.PI / 180;
       const x = c + scaleDist * Math.cos(rad);
       const y = c + scaleDist * Math.sin(rad);
 
@@ -1395,11 +1281,6 @@ function updateGeoPanels(date, session) {
   document.addEventListener('aventra:logout', closeRadar);
 })();
 
-// ================= HUBUNGKAN KE STATUS LOGIN (auth.js) =================
-// auth.js mengurus login/logout & tampil-sembunyi gerbang login. File ini
-// cukup "dengar" event dari auth.js untuk menyalakan/mematikan fitur yang
-// butuh sesi (absensi, pengumuman, jadwal, agenda, geofence).
-
 function onSessionActive() {
   const session = currentSessionInfo();
   if (!session.role) return;
@@ -1425,9 +1306,6 @@ function onSessionEnded() {
 document.addEventListener('aventra:login', onSessionActive);
 document.addEventListener('aventra:logout', onSessionEnded);
 
-// Kalau saat script.js ini jalan ternyata sesi sudah aktif (misalnya
-// halaman baru saja di-refresh dan auth.js sudah menemukan sesi lama
-// yang masih berlaku), langsung nyalakan fitur-fitur di atas juga.
 if (window.AventraAuth && window.AventraAuth.getSession()) {
   onSessionActive();
 }
