@@ -1,4 +1,14 @@
-login-nya.
+// js/auth.js
+//
+// Menggantikan js/config.js yang lama.
+// File ini AMAN 100% untuk dilihat siapa pun lewat Inspect/DevTools,
+// karena tidak berisi PIN atau password sama sekali — semua pengecekan
+// PIN/password terjadi di server (netlify/functions/login.js).
+//
+// Setelah login sukses, info sesi (nama, role, token) disimpan di
+// sessionStorage (hilang otomatis kalau tab ditutup) dan sebuah event
+// 'aventra:login' dikirim supaya script.js yang sudah ada bisa
+// menampilkan konten yang sesuai tanpa perlu tahu detail login-nya.
 
 (function () {
   const loginGate = document.getElementById('loginGate');
