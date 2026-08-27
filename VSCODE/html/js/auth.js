@@ -1,15 +1,3 @@
-// js/auth.js
-//
-// Menggantikan js/config.js yang lama.
-// File ini AMAN 100% untuk dilihat siapa pun lewat Inspect/DevTools,
-// karena tidak berisi PIN atau password sama sekali — semua pengecekan
-// PIN/password terjadi di server (netlify/functions/login.js).
-//
-// Setelah login sukses, info sesi (nama, role, token) disimpan di
-// sessionStorage (hilang otomatis kalau tab ditutup) dan sebuah event
-// 'aventra:login' dikirim supaya script.js yang sudah ada bisa
-// menampilkan konten yang sesuai tanpa perlu tahu detail login-nya.
-
 (function () {
   const loginGate = document.getElementById('loginGate');
   const loginFormStudent = document.getElementById('loginFormStudent');
@@ -43,7 +31,7 @@
   }
 
   function saveSession({ token, role, name }) {
-    const expiry = Date.now() + 12 * 60 * 60 * 1000; // 12 jam, samakan dgn server
+    const expiry = Date.now() + 12 * 60 * 60 * 1000;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, role, name, expiry }));
   }
 
@@ -118,18 +106,6 @@
     document.dispatchEvent(new CustomEvent('aventra:logout'));
   });
 
-  // ================= MODE TAMU (BARU) =================
-  // Tombol "Lihat sebagai Tamu" -- tanpa nama/PIN, langsung masuk
-  // dengan role 'guest'. Ditambahkan lewat JavaScript (tidak menyentuh
-  // index.html/css) supaya tidak mengubah tata letak yang sudah ada;
-  // tombol dipasang di dalam kotak login yang sama, dan otomatis
-  // meniru gaya tombol "Masuk sebagai Admin" yang sudah ada (memakai
-  // class .login-toggle) supaya tampilannya konsisten tanpa CSS baru.
-  //
-  // Token diisi string tetap 'guest-session' (bukan null) supaya lolos
-  // pengecekan sesi tersimpan di getSession() di atas -- token ini
-  // tidak pernah dipakai untuk memanggil server mana pun, karena Tamu
-  // memang tidak pernah mengirim data, hanya membaca.
   function doLoginGuest() {
     const session = { token: 'guest-session', role: 'guest', name: 'Tamu' };
     saveSession(session);
@@ -150,7 +126,6 @@
   }
   setupGuestButton();
 
-  // Cek sesi yang mungkin masih tersimpan (misalnya user refresh halaman)
   const existing = getSession();
   if (existing) {
     showApp(existing);
@@ -158,12 +133,6 @@
     showLoginGate();
   }
 
-  // Expose helper kecil untuk dipakai script.js yang sudah ada, kalau
-  // perlu menyertakan token saat memanggil function admin lain
-  // (misalnya posting pengumuman). Contoh pakai di script.js:
-  //   fetch('/.netlify/functions/pengumuman-post', {
-  //     headers: { Authorization: 'Bearer ' + window.AventraAuth.getToken() }
-  //   })
   window.AventraAuth = {
     getSession,
     getToken: () => (getSession() || {}).token || null,
