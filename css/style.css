@@ -77,6 +77,7 @@
     display:flex; align-items:center; justify-content:center;
     font-family:var(--font-display); font-weight:700; font-size:13px; color:var(--bg-void);
     box-shadow:0 0 0 3px rgba(242,183,5,0.14);
+    object-fit:cover;
   }
   .nav-brand .wordmark{
     font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:0.5px; color:var(--text-hi);
@@ -527,6 +528,7 @@
     background:conic-gradient(from 210deg, var(--gold), var(--teal), var(--gold));
     display:flex; align-items:center; justify-content:center;
     font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--bg-void);
+    object-fit:cover;
   }
   footer h4{ font-family:var(--font-display); font-size:20px; letter-spacing:1px; }
   footer p{ color:var(--text-low); font-size:12.5px; margin-top:10px; font-family:var(--font-mono); }
@@ -550,6 +552,7 @@
     background:conic-gradient(from 210deg, var(--gold), var(--teal), var(--gold));
     display:flex; align-items:center; justify-content:center;
     font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--bg-void);
+    object-fit:cover;
   }
   .login-box h2{
     font-family:var(--font-display); font-size:22px; text-align:center; margin-bottom:6px;
