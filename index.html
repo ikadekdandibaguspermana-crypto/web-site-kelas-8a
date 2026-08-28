@@ -19,7 +19,6 @@
 <div class="glow-orb one"></div>
 <div class="glow-orb two"></div>
 
-<!-- ================= LOGIN GATE ================= -->
 <div class="login-gate" id="loginGate">
   <div class="login-box">
     <div class="login-patch">AV</div>
@@ -55,7 +54,6 @@
   <button id="logoutBtn">Keluar</button>
 </div>
 
-<!-- ================= NAVBAR ================= -->
 <div class="nav-wrap" id="navWrap">
   <nav>
     <a href="#beranda" class="nav-brand">
@@ -92,7 +90,6 @@
   <a href="#footer">Kontak</a>
 </div>
 
-<!-- ================= HERO ================= -->
 <header class="hero" id="beranda">
   <div class="spotlight" id="spotlight"></div>
   <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
@@ -126,7 +123,6 @@
   <div class="scroll-cue load-in d6">GULIR &nbsp;↓</div>
 </header>
 
-<!-- ================= STRUKTUR KELAS ================= -->
 <section class="section" id="struktur">
   <div class="section-head reveal">
     <div class="eyebrow">Kru Aventra</div>
@@ -160,9 +156,9 @@
       <h4>I Ketut Anna Ary Sudana Putra</h4>
     </div>
     <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">LP</div>
+      <div class="avatar-ring">PL</div>
       <div class="role-tag">Sekretaris 1</div>
-      <h4>Ni Luh Putu Laksmi Pradnyaswari</h4>
+      <h4>Luh Putu Laksmi Pradnyaswari</h4>
     </div>
     <div class="officer-card tilt stagger-item">
       <div class="avatar-ring">BP</div>
@@ -188,7 +184,6 @@
   <div class="roster-grid stagger-container" id="rosterGrid"></div>
 </section>
 
-<!-- ================= ABSENSI ================= -->
 <section class="section" id="absensi">
   <div class="section-head reveal">
     <div class="eyebrow">Rekap Harian</div>
@@ -253,7 +248,6 @@
   <p class="absen-note" id="absenNote">Tersimpan otomatis</p>
 </section>
 
-<!-- ================= KEGIATAN ================= -->
 <section class="section" id="kegiatan">
   <div class="section-head reveal">
     <div class="eyebrow">Dokumentasi</div>
@@ -282,7 +276,6 @@
   </div>
 </section>
 
-<!-- ================= PENGUMUMAN (baru) ================= -->
 <section class="section" id="pengumuman">
   <div class="section-head reveal">
     <div class="eyebrow">Info Kelas</div>
@@ -302,7 +295,6 @@
   <p class="list-empty" id="pengumumanEmpty" style="display:none;">Belum ada pengumuman.</p>
 </section>
 
-<!-- ================= JADWAL PELAJARAN (baru) ================= -->
 <section class="section" id="jadwal">
   <div class="section-head reveal">
     <div class="eyebrow">Rutinitas</div>
@@ -312,7 +304,6 @@
   <div class="jadwal-grid stagger-container" id="jadwalGrid"></div>
 </section>
 
-<!-- ================= AGENDA KELAS (baru) ================= -->
 <section class="section" id="agenda">
   <div class="section-head reveal">
     <div class="eyebrow">Kalender</div>
@@ -336,7 +327,6 @@
   <p class="list-empty" id="agendaEmpty" style="display:none;">Belum ada agenda mendatang.</p>
 </section>
 
-<!-- ================= LIGHTBOX ================= -->
 <div class="lightbox" id="lightbox">
   <button class="lb-close" id="lbClose">✕</button>
   <div class="lb-box">
@@ -346,7 +336,6 @@
   <p class="lb-caption" id="lbCaption">Ganti elemen ini dengan foto kegiatan asli kelas kalian.</p>
 </div>
 
-<!-- ================= REKAP BULANAN (MODAL) ================= -->
 <div class="rekap-modal" id="rekapModal">
   <div class="rekap-panel">
     <button class="rekap-close" id="rekapClose">✕</button>
@@ -380,22 +369,14 @@
   </div>
 </div>
 
-<!-- ================= FOOTER ================= -->
 <footer id="footer">
   <div class="patch">AV</div>
   <h4>AVENTRA CLASS</h4>
   <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
 </footer>
 
-<!--
-  PENTING: config.js dimuat SEBELUM script.js karena script.js membaca
-  window.APP_CONFIG (password admin & PIN murid) dari file ini.
-  config.js sengaja dipisah & didaftarkan di .gitignore supaya tidak
-  ikut ter-upload saat push ke GitHub — TAPI tetap bisa dibaca lewat
-  Inspect/DevTools browser siapa pun yang membuka web ini, karena
-  browser harus mengunduhnya agar login bisa berfungsi.
--->
-<script src="js/config.js"></script>
+<!-- auth.js menangani login lewat server (Netlify Function), aman dilihat publik. -->
+<script src="js/auth.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>
