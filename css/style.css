@@ -31,7 +31,6 @@
     position:relative;
   }
 
-  /* ambient starfield background */
   .starfield{
     position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
@@ -53,7 +52,6 @@
 
   section, header, footer{ position:relative; z-index:1; }
 
-  /* ============ NAVBAR — floating, detached from edges ============ */
   .nav-wrap{
     position:fixed; top:22px; left:0; right:0; z-index:100;
     display:flex; justify-content:center;
@@ -149,7 +147,6 @@
     nav{ width:auto; }
   }
 
-  /* ============ LOAD-IN SEQUENCE ============ */
   @keyframes fadeUp{
     from{ opacity:0; transform:translateY(26px); }
     to{ opacity:1; transform:translateY(0); }
@@ -167,7 +164,6 @@
   .load-in.d5{ animation-delay:0.76s; }
   .load-in.d6{ animation-delay:0.92s; }
 
-  /* ============ HERO ============ */
   .hero{
     min-height:100vh;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -226,7 +222,6 @@
   }
   @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(8px);} }
 
-  /* ============ SECTION SHELL ============ */
   .section{ padding:120px 24px; max-width:1180px; margin:0 auto; }
   .section-head{ margin-bottom:56px; }
   .section-head .eyebrow{ justify-content:flex-start; margin-bottom:16px; }
@@ -245,7 +240,6 @@
 
   .tilt{ transition:transform 0.15s ease-out, border-color 0.3s ease, background 0.3s ease; will-change:transform; }
 
-  /* ============ STRUKTUR KELAS ============ */
   .lead-cards{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-bottom:22px; }
   @media (max-width:720px){ .lead-cards{ grid-template-columns:1fr; } }
 
@@ -315,7 +309,6 @@
   .roster-pin{ font-family:var(--font-mono); font-size:9.5px; color:var(--teal); letter-spacing:0.5px; }
   .pin-tag{ font-family:var(--font-mono); font-size:9.5px; color:var(--teal); letter-spacing:0.5px; margin-top:4px; }
 
-  /* ============ ABSENSI ============ */
   .absen-controls{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:26px;
   }
@@ -386,7 +379,6 @@
     .absen-btns{ width:100%; justify-content:flex-start; margin-top:4px; }
   }
 
-  /* ============ REKAP BULANAN (modal) ============ */
   .rekap-modal{
     position:fixed; inset:0; z-index:210; background:rgba(6,8,16,0.92); backdrop-filter:blur(6px);
     display:none; align-items:center; justify-content:center; padding:24px;
@@ -441,7 +433,6 @@
     .rekap-download{ width:100%; text-align:center; }
   }
 
-  /* ============ KEGIATAN — Gallery ============ */
   .gallery-grid{
     display:grid; grid-template-columns:repeat(4, 1fr); grid-auto-rows:150px; gap:14px;
   }
@@ -508,7 +499,6 @@
     padding:6px 12px; border-radius:999px;
   }
 
-  /* ============ LIGHTBOX ============ */
   .lightbox{
     position:fixed; inset:0; z-index:200; background:rgba(6,8,16,0.92); backdrop-filter:blur(6px);
     display:none; align-items:center; justify-content:center; padding:40px; flex-direction:column; gap:16px;
@@ -529,7 +519,6 @@
     font-size:18px; cursor:pointer;
   }
 
-  /* ============ FOOTER ============ */
   footer{
     padding:70px 24px 40px; border-top:1px solid var(--line-soft); text-align:center;
   }
@@ -542,7 +531,6 @@
   footer h4{ font-family:var(--font-display); font-size:20px; letter-spacing:1px; }
   footer p{ color:var(--text-low); font-size:12.5px; margin-top:10px; font-family:var(--font-mono); }
 
-  /* ============ LOGIN GATE ============ */
   .login-gate{
     position:fixed; inset:0; z-index:500; background:var(--bg-void);
     display:flex; align-items:center; justify-content:center; padding:24px;
@@ -609,7 +597,6 @@
     .session-badge{ top:66px; bottom:auto; right:14px; left:14px; justify-content:space-between; }
   }
 
-  /* ============ MOBILE REFINEMENTS ============ */
   @media (max-width:640px){
     .nav-wrap{ top:14px; padding:0 22px; }
     nav{ padding:10px 8px 10px 16px; }
@@ -645,14 +632,6 @@
     outline:2px solid var(--gold); outline-offset:3px;
   }
 
-  /* ============================================================
-     FITUR TAMBAHAN — Tema Terang/Gelap, Papan Pengumuman,
-     Jadwal Pelajaran, Agenda Kelas, Export PDF.
-     Semua di bawah ini murni tambahan baru, tidak mengubah
-     style/markup yang sudah ada sebelumnya.
-  ============================================================ */
-
-  /* ---------- Theme toggle button ---------- */
   .theme-toggle{
     width:36px; height:36px; border-radius:50%; flex-shrink:0;
     background:rgba(255,255,255,0.05); border:1px solid var(--line-soft);
@@ -663,7 +642,6 @@
   }
   .theme-toggle:hover{ border-color:var(--gold); background:rgba(255,255,255,0.09); }
 
-  /* ---------- Light mode overrides (opt-in via body.light-mode) ---------- */
   body.light-mode{
     --bg-void:#f6f3ec;
     --bg-deep:#efe9db;
@@ -686,7 +664,6 @@
   body.light-mode .absen-btn[data-s="I"].active,
   body.light-mode .absen-btn[data-s="A"].active{ color:#0a0d1a; }
 
-  /* ---------- Composer shared style (Pengumuman & Agenda admin forms) ---------- */
   .composer-box{
     background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:var(--radius-md);
     padding:20px; margin-bottom:26px; display:flex; flex-direction:column; gap:12px;
@@ -713,7 +690,6 @@
     font-family:var(--font-mono); font-size:10.5px; color:var(--text-low);
   }
 
-  /* ---------- Papan Pengumuman ---------- */
   .pengumuman-list{ display:flex; flex-direction:column; gap:10px; }
   .pengumuman-item{
     background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:14px;
@@ -741,7 +717,6 @@
     color:var(--text-low); font-size:13.5px; font-family:var(--font-mono); text-align:center; padding:30px 10px;
   }
 
-  /* ---------- Jadwal Pelajaran ---------- */
   .jadwal-grid{
     display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;
   }
@@ -785,7 +760,6 @@
   }
   .jadwal-add-btn:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
 
-  /* ---------- Agenda Kelas ---------- */
   .agenda-list{ display:flex; flex-direction:column; gap:10px; }
   .agenda-item{
     background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:14px;
@@ -811,7 +785,6 @@
   }
   .agenda-del:hover{ color:#ff8a8a; border-color:#ff8a8a; }
 
-  /* ---------- Extra PDF export button next to existing CSV button ---------- */
   .rekap-download-pdf{
     background:var(--teal); border:1px solid var(--teal); color:var(--bg-void);
   }
@@ -819,7 +792,6 @@
   .rekap-download-group{ display:flex; gap:8px; flex-wrap:wrap; }
   @media (max-width:640px){ .rekap-download-group{ width:100%; } .rekap-download-group button{ flex:1; } }
 
-  /* ---------- Absen Otomatis GPS (Geofence) ---------- */
   .geo-admin-box, .geo-student-box{
     background:linear-gradient(150deg, var(--bg-panel-hi), var(--bg-panel));
     border:1px solid var(--line-soft); border-radius:var(--radius-md);
