@@ -2,6 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="hosting-provider" content="Netlify">
+<meta name="netlify-deploy" content="https://netlify.new/?utm_campaign=ai-legible&amp;utm_source=meta&amp;utm_medium=referral&amp;utm_id=399d1102-dc4f-41dd-873c-d0a928095326">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,14 +17,14 @@
 </head>
 <body>
 
+<div id="earthCanvasWrap" class="earth-canvas-wrap" aria-hidden="true"></div>
 <div class="starfield"></div>
 <div class="glow-orb one"></div>
 <div class="glow-orb two"></div>
 
-<!-- ================= LOGIN GATE ================= -->
 <div class="login-gate" id="loginGate">
   <div class="login-box">
-    <div class="login-patch">AV</div>
+    <img class="login-patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
     <h2 id="loginTitle">Masuk ke Aventra Class</h2>
     <p class="sub" id="loginSub">Masukkan nama dan PIN kamu persis seperti pada daftar absensi.</p>
 
@@ -55,11 +57,10 @@
   <button id="logoutBtn">Keluar</button>
 </div>
 
-<!-- ================= NAVBAR ================= -->
 <div class="nav-wrap" id="navWrap">
   <nav>
     <a href="#beranda" class="nav-brand">
-      <span class="patch">AV</span>
+      <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
       <span class="wordmark">AVENTRA<span> CLASS</span></span>
     </a>
     <ul class="nav-links" id="navLinks">
@@ -92,21 +93,16 @@
   <a href="#footer">Kontak</a>
 </div>
 
-<!-- ================= HERO ================= -->
 <header class="hero" id="beranda">
   <div class="spotlight" id="spotlight"></div>
   <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
   <h1 class="load-in d2">AVENTRA<br>CLASS</h1>
-  <p class="tagline load-in d3">Kelas yang <strong>menjelajah bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
+  <p class="tagline load-in d3">Kelas yang <strong>jatuh dan bangkit bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
 
   <div class="patch-badge load-in d4">
-    <svg viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="patch-ring-svg" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle class="patch-ring" cx="75" cy="75" r="72" stroke="#f2b705" stroke-width="1.4" stroke-dasharray="3 5" opacity="0.5"/>
-      <circle cx="75" cy="75" r="60" fill="url(#patchGrad)" stroke="#f2b705" stroke-width="1.6"/>
-      <circle cx="75" cy="75" r="60" fill="none" stroke="#2fd4c4" stroke-width="0.6" opacity="0.4"/>
-      <path d="M75 38 L88 92 L75 82 L62 92 Z" fill="#0a0d1a" opacity="0.85"/>
-      <circle cx="75" cy="45" r="4" fill="#f2b705"/>
-      <text x="75" y="112" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="10" fill="#0a0d1a" font-weight="700" letter-spacing="2">AVENTRA</text>
+      <circle cx="75" cy="75" r="61" fill="url(#patchGrad)"/>
       <defs>
         <linearGradient id="patchGrad" x1="15" y1="15" x2="135" y2="135" gradientUnits="userSpaceOnUse">
           <stop stop-color="#f7d158"/>
@@ -114,6 +110,7 @@
         </linearGradient>
       </defs>
     </svg>
+    <img class="patch-badge-img" src="css/asset/logo-aventra-400.png" alt="Logo Aventra Class">
   </div>
 
   <div class="stat-row load-in d5">
@@ -126,7 +123,6 @@
   <div class="scroll-cue load-in d6">GULIR &nbsp;↓</div>
 </header>
 
-<!-- ================= STRUKTUR KELAS ================= -->
 <section class="section" id="struktur">
   <div class="section-head reveal">
     <div class="eyebrow">Kru Aventra</div>
@@ -188,7 +184,6 @@
   <div class="roster-grid stagger-container" id="rosterGrid"></div>
 </section>
 
-<!-- ================= ABSENSI ================= -->
 <section class="section" id="absensi">
   <div class="section-head reveal">
     <div class="eyebrow">Rekap Harian</div>
@@ -253,7 +248,6 @@
   <p class="absen-note" id="absenNote">Tersimpan otomatis</p>
 </section>
 
-<!-- ================= KEGIATAN ================= -->
 <section class="section" id="kegiatan">
   <div class="section-head reveal">
     <div class="eyebrow">Dokumentasi</div>
@@ -282,7 +276,6 @@
   </div>
 </section>
 
-<!-- ================= PENGUMUMAN (baru) ================= -->
 <section class="section" id="pengumuman">
   <div class="section-head reveal">
     <div class="eyebrow">Info Kelas</div>
@@ -302,7 +295,6 @@
   <p class="list-empty" id="pengumumanEmpty" style="display:none;">Belum ada pengumuman.</p>
 </section>
 
-<!-- ================= JADWAL PELAJARAN (baru) ================= -->
 <section class="section" id="jadwal">
   <div class="section-head reveal">
     <div class="eyebrow">Rutinitas</div>
@@ -312,7 +304,6 @@
   <div class="jadwal-grid stagger-container" id="jadwalGrid"></div>
 </section>
 
-<!-- ================= AGENDA KELAS (baru) ================= -->
 <section class="section" id="agenda">
   <div class="section-head reveal">
     <div class="eyebrow">Kalender</div>
@@ -336,7 +327,6 @@
   <p class="list-empty" id="agendaEmpty" style="display:none;">Belum ada agenda mendatang.</p>
 </section>
 
-<!-- ================= LIGHTBOX ================= -->
 <div class="lightbox" id="lightbox">
   <button class="lb-close" id="lbClose">✕</button>
   <div class="lb-box">
@@ -346,7 +336,6 @@
   <p class="lb-caption" id="lbCaption">Ganti elemen ini dengan foto kegiatan asli kelas kalian.</p>
 </div>
 
-<!-- ================= REKAP BULANAN (MODAL) ================= -->
 <div class="rekap-modal" id="rekapModal">
   <div class="rekap-panel">
     <button class="rekap-close" id="rekapClose">✕</button>
@@ -380,20 +369,18 @@
   </div>
 </div>
 
-<!-- ================= FOOTER ================= -->
+
 <footer id="footer">
-  <div class="patch">AV</div>
+  <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
   <h4>AVENTRA CLASS</h4>
   <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
 </footer>
 
-<!--
-  PENTING: auth.js dimuat SEBELUM script.js. auth.js menangani login
-  dengan memanggil server (Netlify Function), BUKAN dengan menyimpan
-  PIN/password di file yang dikirim ke browser. Tidak ada data rahasia
-  apa pun di file ini maupun di auth.js -- aman dilihat lewat Inspect.
--->
+
 <script src="js/auth.js"></script>
 <script src="js/script.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+<script src="js/earth3d.js"></script>
 </body>
 </html>

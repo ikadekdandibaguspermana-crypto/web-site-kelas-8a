@@ -1,15 +1,3 @@
-// js/auth.js
-//
-// Menggantikan js/config.js yang lama.
-// File ini AMAN 100% untuk dilihat siapa pun lewat Inspect/DevTools,
-// karena tidak berisi PIN atau password sama sekali — semua pengecekan
-// PIN/password terjadi di server (netlify/functions/login.js).
-//
-// Setelah login sukses, info sesi (nama, role, token) disimpan di
-// sessionStorage (hilang otomatis kalau tab ditutup) dan sebuah event
-// 'aventra:login' dikirim supaya script.js yang sudah ada bisa
-// menampilkan konten yang sesuai tanpa perlu tahu detail login-nya.
-
 (function () {
   const loginGate = document.getElementById('loginGate');
   const loginFormStudent = document.getElementById('loginFormStudent');
@@ -27,6 +15,8 @@
   const SESSION_KEY = 'aventra_session';
   let isAdminMode = false;
 
+  const IS_LOCAL_DEV = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+
   function getSession() {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
@@ -43,7 +33,7 @@
   }
 
   function saveSession({ token, role, name }) {
-    const expiry = Date.now() + 12 * 60 * 60 * 1000; // 12 jam, samakan dgn server
+    const expiry = Date.now() + 12 * 60 * 60 * 1000;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, role, name, expiry }));
   }
 
@@ -73,16 +63,35 @@
       : { type: 'student', name: loginName.value, pin: loginPin.value };
 
     try {
-      const res = await fetch('/.netlify/functions/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      let data;
 
-      if (!res.ok || !data.ok) {
-        loginError.textContent = data.error || 'Login gagal. Coba lagi.';
-        return;
+      if (IS_LOCAL_DEV) {
+        await new Promise((r) => setTimeout(r, 250));
+        if (isAdminMode) {
+          if (!loginAdminPass.value.trim()) {
+            loginError.textContent = '[Mode lokal] Isi password apa saja untuk masuk sebagai Admin.';
+            return;
+          }
+          data = { ok: true, token: 'local-dev-token', role: 'admin', name: 'Admin' };
+        } else {
+          if (!loginName.value.trim() || !loginPin.value.trim()) {
+            loginError.textContent = '[Mode lokal] Isi nama & PIN apa saja untuk masuk.';
+            return;
+          }
+          data = { ok: true, token: 'local-dev-token', role: 'student', name: loginName.value.trim() };
+        }
+      } else {
+        const res = await fetch('/.netlify/functions/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          loginError.textContent = data.error || 'Login gagal. Coba lagi.';
+          return;
+        }
       }
 
       saveSession(data);
@@ -118,7 +127,33 @@
     document.dispatchEvent(new CustomEvent('aventra:logout'));
   });
 
-  // Cek sesi yang mungkin masih tersimpan (misalnya user refresh halaman)
+  function doLoginGuest() {
+    const session = { token: 'guest-session', role: 'guest', name: 'Tamu' };
+    saveSession(session);
+    showApp(session);
+  }
+
+  function setupGuestButton() {
+    const loginBoxEl = document.querySelector('.login-box');
+    if (!loginBoxEl || document.getElementById('loginGuestBtn')) return;
+    const guestBtn = document.createElement('button');
+    guestBtn.type = 'button';
+    guestBtn.id = 'loginGuestBtn';
+    guestBtn.className = 'login-toggle';
+    guestBtn.style.marginTop = '8px';
+    guestBtn.textContent = 'Masuk sebagai Tamu (tanpa login)';
+    guestBtn.addEventListener('click', doLoginGuest);
+    loginBoxEl.appendChild(guestBtn);
+  }
+  setupGuestButton();
+
+  if (IS_LOCAL_DEV) {
+    const titleEl = document.getElementById('loginTitle');
+    const subEl = document.getElementById('loginSub');
+    if (titleEl) titleEl.textContent = '⚠️ Mode Testing Lokal';
+    if (subEl) subEl.textContent = 'Nama/PIN/password BEBAS (tidak divalidasi ke server). Ini cuma buat lihat tampilan di Live Server.';
+  }
+
   const existing = getSession();
   if (existing) {
     showApp(existing);
@@ -126,12 +161,6 @@
     showLoginGate();
   }
 
-  // Expose helper kecil untuk dipakai script.js yang sudah ada, kalau
-  // perlu menyertakan token saat memanggil function admin lain
-  // (misalnya posting pengumuman). Contoh pakai di script.js:
-  //   fetch('/.netlify/functions/pengumuman-post', {
-  //     headers: { Authorization: 'Bearer ' + window.AventraAuth.getToken() }
-  //   })
   window.AventraAuth = {
     getSession,
     getToken: () => (getSession() || {}).token || null,

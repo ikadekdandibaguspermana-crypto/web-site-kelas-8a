@@ -1,4 +1,3 @@
-// ================= FIREBASE / FIRESTORE =================
 const firebaseConfig = {
   apiKey: "AIzaSyAruYX883CuAYkes1Uq-eYt7ZgpWR0iUG4",
   authDomain: "ombak-nusantara.firebaseapp.com",
@@ -10,19 +9,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-// Setiap tanggal = satu dokumen di koleksi "absensi", field = nama murid -> status (H/S/I/A)
 function absenDocRef(dateStr) { return db.collection('absensi').doc(dateStr); }
 
-// ================= AUTH / SESSION =================
-// PENTING: Login (nama+PIN murid / password admin) SEPENUHNYA ditangani
-// oleh js/auth.js, yang mengeceknya lewat server (Netlify Function).
-// File ini TIDAK PERNAH menyimpan atau membaca PIN/password mentah --
-// file ini hanya membaca status sesi yang sudah berhasil login lewat
-// window.AventraAuth (disediakan oleh auth.js).
-
-// Full roster used both for the "Daftar Anggota Kelas" grid and as the
-// master name list for login + absensi (kept in sync so the name typed
-// at login always matches a real row in absensi).
 const roster = [
   "Casey","Redi","Rizki","Alit Payama",
   "Novi","Ary",
@@ -34,8 +22,6 @@ const roster = [
   "Desita","Damay","Felii","Aldo"
 ];
 
-// Pengurus inti — nama lengkap disamakan dengan kartu profil di atas
-// supaya nama yang dipakai untuk login = nama yang tampil di struktur kelas.
 const pengurus = [
   { name: "Ni Ketut Nindia Candra Dewi", jabatan: "Ketua Kelas" },
   { name: "I Ketut Anna Ary Sudana Putra", jabatan: "Wakil Ketua" },
@@ -58,14 +44,11 @@ function findStudentByName(typed) {
 
 const pengurusNameSet = new Set(pengurus.map(p => p.name.trim().toLowerCase()));
 
-// Baca status login dari auth.js. Mengembalikan role 'admin', 'pengurus',
-// 'student', atau null kalau belum login. 'pengurus' dipakai untuk kartu
-// pengurus inti supaya mereka bisa kelola Pengumuman/Jadwal/Agenda, tapi
-// tetap seperti murid biasa untuk Absensi (hanya tandai dirinya sendiri).
 function currentSessionInfo() {
   const s = window.AventraAuth ? window.AventraAuth.getSession() : null;
   if (!s || !s.role) return { role: null, name: null };
   if (s.role === 'admin') return { role: 'admin', name: 'Admin' };
+  if (s.role === 'guest') return { role: 'guest', name: 'Tamu' };
   const role = pengurusNameSet.has((s.name || '').trim().toLowerCase()) ? 'pengurus' : 'student';
   return { role, name: s.name };
 }
@@ -78,25 +61,16 @@ function canManageInfo() {
   return r === 'admin' || r === 'pengurus';
 }
 
-// ---------- Roster grid (Daftar Anggota Kelas) ----------
-// CATATAN KEAMANAN: PIN murid TIDAK ditampilkan di sini lagi (dan di
-// mana pun di halaman ini). Menampilkan PIN dalam bentuk teks di halaman
-// -- walau di balik login sekalipun -- membuatnya bisa dibaca lewat
-// Inspect/DevTools oleh siapa saja yang membuka halaman ini, persis
-// seperti masalah keamanan yang sedang kita perbaiki. Kalau ada murid
-// lupa PIN, itu hanya bisa dicek/diubah langsung oleh admin lewat
-// Netlify Environment Variables, bukan ditampilkan di web.
 const rosterGrid = document.getElementById('rosterGrid');
 document.getElementById('rosterCount').textContent = roster.length;
 roster.forEach((name, i) => {
   const card = document.createElement('div');
   card.className = 'roster-card stagger-item';
-  const num = String(i + 1).padStart(2, '0'); // nomor absen anggota, dimulai dari 01
+  const num = String(i + 1).padStart(2, '0');
   card.innerHTML = `<div class="roster-id">${num}</div><div class="roster-info"><span>${name}</span></div>`;
   rosterGrid.appendChild(card);
 });
 
-// ---------- Gallery placeholders ----------
 const galleryCaptions = [
   "Kerja Kelompok Proyek Sains",
   "Outing Class ke Museum",
@@ -119,7 +93,6 @@ galleryCaptions.forEach((cap, i) => {
   galleryGrid.appendChild(item);
 });
 
-// ---------- Lightbox ----------
 const lightbox = document.getElementById('lightbox');
 const lbLabel = document.getElementById('lbLabel');
 const lbCaption = document.getElementById('lbCaption');
@@ -139,7 +112,6 @@ document.getElementById('videoTrigger').addEventListener('click', () => {
   lightbox.classList.add('open');
 });
 
-// ---------- Navbar scroll state + parallax orbs ----------
 const navWrap = document.getElementById('navWrap');
 const orbOne = document.querySelector('.glow-orb.one');
 const orbTwo = document.querySelector('.glow-orb.two');
@@ -153,7 +125,6 @@ window.addEventListener('scroll', () => {
   }
 }, { passive: true });
 
-// ---------- Mobile menu ----------
 const burgerBtn = document.getElementById('burgerBtn');
 const mobileMenu = document.getElementById('mobileMenu');
 burgerBtn.addEventListener('click', () => {
@@ -165,7 +136,6 @@ mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => 
   burgerBtn.classList.remove('active');
 }));
 
-// ---------- Hero cursor spotlight ----------
 const spotlight = document.getElementById('spotlight');
 const heroEl = document.getElementById('beranda');
 if (!reduceMotion && spotlight) {
@@ -176,7 +146,6 @@ if (!reduceMotion && spotlight) {
   });
 }
 
-// ---------- Animated stat counters ----------
 document.querySelectorAll('.stat-chip b[data-count]').forEach(b => {
   const target = parseInt(b.getAttribute('data-count'), 10);
   if (reduceMotion) { b.textContent = target; return; }
@@ -193,7 +162,6 @@ document.querySelectorAll('.stat-chip b[data-count]').forEach(b => {
   }, 750);
 });
 
-// ---------- Tilt / magnetic hover on cards ----------
 if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
   document.querySelectorAll('.tilt').forEach(el => {
     el.addEventListener('mousemove', (e) => {
@@ -206,7 +174,6 @@ if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
   });
 }
 
-// ---------- Staggered grid reveal ----------
 const staggerObs = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -221,7 +188,6 @@ const staggerObs = new IntersectionObserver((entries) => {
 }, { threshold: 0.08 });
 document.querySelectorAll('.stagger-container').forEach(c => staggerObs.observe(c));
 
-// ================= DAFTAR ABSENSI (real-time via Firestore) =================
 const absenMonthSelect = document.getElementById('absenMonth');
 const absenDateInput = document.getElementById('absenDate');
 const absenList = document.getElementById('absenList');
@@ -235,10 +201,15 @@ function todayStr() {
 }
 function pad2(n){ return String(n).padStart(2,'0'); }
 
+function isWeekendDate(dateStr) {
+  const [y, m, d] = (dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return false;
+  const day = new Date(y, m - 1, d).getDay();
+  return day === 0 || day === 6;
+}
+
 const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
-// Bulan tersedia: dari bulan berjalan sampai jauh ke depan, supaya
-// praktis "selamanya" tidak pernah kehabisan pilihan bulan.
 function buildMonthOptions() {
   const now = new Date();
   const startY = now.getFullYear(), startM = now.getMonth();
@@ -267,8 +238,6 @@ function clampDateToMonth(dateStr, monthVal) {
 
 absenDateInput.value = todayStr();
 
-// Kalau tab dibiarkan terbuka melewati tengah malam, otomatis majukan
-// tanggal ke "hari ini" yang baru.
 let lastKnownToday = todayStr();
 setInterval(() => {
   const nowToday = todayStr();
@@ -293,13 +262,12 @@ absenDateInput.addEventListener('change', () => {
   renderAbsensi();
 });
 
-// Listener real-time Firestore untuk tanggal yang sedang aktif.
 let unsubscribeAbsen = null;
 let currentDayData = {};
 
 function renderAbsensi() {
   const session = currentSessionInfo();
-  if (!session.role) return; // belum login, jangan render dulu
+  if (!session.role) return;
 
   const date = absenDateInput.value || todayStr();
 
@@ -322,27 +290,58 @@ function renderAbsensi() {
   );
 }
 
+function ensureWeekendBanner() {
+  let el = document.getElementById('absenWeekendBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'absenWeekendBanner';
+    el.style.cssText = 'margin:0 0 14px;padding:10px 14px;border-radius:10px;background:rgba(242,183,5,0.12);border:1px solid rgba(242,183,5,0.35);color:#f2b705;font-size:0.9rem;text-align:center;display:none;';
+    if (absenList && absenList.parentNode) {
+      absenList.parentNode.insertBefore(el, absenList);
+    }
+  }
+  return el;
+}
+
 function paintAbsensi(date, session) {
   const dayData = currentDayData || {};
   const isAdmin = session.role === 'admin';
-  absenSubText.textContent = isAdmin
-    ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
-    : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`;
+  const isGuest = session.role === 'guest';
+  const viewAll = isAdmin || isGuest;
+  const weekend = isWeekendDate(date);
+  const readOnly = weekend || isGuest;
+
+  const banner = ensureWeekendBanner();
+  if (weekend) {
+    banner.textContent = '🚫 Sabtu & Minggu libur — absensi tidak tersedia untuk tanggal ini.';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  absenSubText.textContent = weekend
+    ? 'Hari Sabtu/Minggu libur. Kehadiran hanya bisa ditandai pada hari sekolah (Senin–Jumat).'
+    : isGuest
+      ? 'Kamu login sebagai Tamu — bisa melihat kehadiran seluruh murid secara real-time, tapi tidak bisa mengubah apa pun.'
+      : (isAdmin
+        ? 'Admin dapat melihat & mengubah kehadiran seluruh murid secara real-time. Status tersimpan otomatis ke server setiap kali ditandai.'
+        : `Kamu masuk sebagai ${session.name}. Kamu hanya bisa menandai kehadiranmu sendiri — status tersimpan otomatis ke server.`);
 
   rekapBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
-  const visibleStudents = isAdmin
+  const visibleStudents = viewAll
     ? kelasLengkap
     : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
 
   absenList.innerHTML = '';
   visibleStudents.forEach((student) => {
     const globalIndex = kelasLengkap.findIndex(s => s.name === student.name);
-    const isMe = !isAdmin && student.name.trim().toLowerCase() === session.name.trim().toLowerCase();
+    const isMe = !viewAll && student.name.trim().toLowerCase() === session.name.trim().toLowerCase();
     const row = document.createElement('div');
     row.className = 'absen-row stagger-item in' + (isMe ? ' me' : '');
     const num = String(globalIndex + 1).padStart(2, '0');
     const current = dayData[student.name] || '';
+    const disabledAttr = readOnly ? 'disabled' : '';
     row.innerHTML = `
       <div class="absen-num">${num}</div>
       <div class="absen-name">
@@ -350,15 +349,15 @@ function paintAbsensi(date, session) {
         ${student.jabatan ? `<span>${student.jabatan}</span>` : ''}
       </div>
       <div class="absen-btns">
-        <button class="absen-btn ${current==='H'?'active':''}" data-s="H">Hadir</button>
-        <button class="absen-btn ${current==='S'?'active':''}" data-s="S">Sakit</button>
-        <button class="absen-btn ${current==='I'?'active':''}" data-s="I">Izin</button>
-        <button class="absen-btn ${current==='A'?'active':''}" data-s="A">Alpa</button>
+        <button class="absen-btn ${current==='H'?'active':''}" data-s="H" ${disabledAttr}>Hadir</button>
+        <button class="absen-btn ${current==='S'?'active':''}" data-s="S" ${disabledAttr}>Sakit</button>
+        <button class="absen-btn ${current==='I'?'active':''}" data-s="I" ${disabledAttr}>Izin</button>
+        <button class="absen-btn ${current==='A'?'active':''}" data-s="A" ${disabledAttr}>Alpa</button>
       </div>
     `;
     row.querySelectorAll('.absen-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        // Murid hanya boleh mengubah barisnya sendiri; admin boleh semua.
+        if (readOnly) return;
         if (!isAdmin && !isMe) return;
         const status = btn.getAttribute('data-s');
         const newValue = dayData[student.name] === status
@@ -371,18 +370,18 @@ function paintAbsensi(date, session) {
         } catch (e) {
           console.error(e);
           alert('Gagal menyimpan absensi. Cek koneksi internet lalu coba lagi.');
-          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = false);
+          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = readOnly);
         }
       });
     });
     absenList.appendChild(row);
   });
-  updateSummary(dayData, isAdmin, session);
+  updateSummary(dayData, viewAll, session);
   updateGeoPanels(date, session);
 }
 
-function updateSummary(dayData, isAdmin, session) {
-  const scope = isAdmin ? kelasLengkap : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
+function updateSummary(dayData, viewAll, session) {
+  const scope = viewAll ? kelasLengkap : kelasLengkap.filter(s => s.name.trim().toLowerCase() === session.name.trim().toLowerCase());
   const counts = { H: 0, S: 0, I: 0, A: 0 };
   scope.forEach(s => { if (dayData[s.name] && counts[dayData[s.name]] !== undefined) counts[dayData[s.name]]++; });
   const unset = scope.length - (counts.H + counts.S + counts.I + counts.A);
@@ -401,7 +400,6 @@ function flashSaved(date) {
   flashTimer = setTimeout(() => absenNote.classList.remove('show'), 1600);
 }
 
-// ================= REKAP BULANAN =================
 const rekapBtn = document.getElementById('rekapBtn');
 const rekapModal = document.getElementById('rekapModal');
 const rekapClose = document.getElementById('rekapClose');
@@ -414,15 +412,15 @@ const rekapDownload = document.getElementById('rekapDownload');
 const rekapDaysNote = document.getElementById('rekapDaysNote');
 const rekapDownloadPdfBtn = document.getElementById('rekapDownloadPdf');
 
-let rekapCurrentData = null; // dipakai saat export CSV/PDF
+let rekapCurrentData = null;
 
-function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); } // m: 1-12
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
 
 async function openRekap() {
   const session = currentSessionInfo();
-  if (session.role !== 'admin') return; // rekap hanya untuk admin
+  if (session.role !== 'admin') return;
 
-  const monthVal = absenMonthSelect.value; // format "YYYY-MM"
+  const monthVal = absenMonthSelect.value;
   const [y, m] = monthVal.split('-').map(Number);
   rekapTitle.textContent = `${bulanNama[m - 1]} ${y}`;
   rekapDaysNote.textContent = '';
@@ -454,7 +452,7 @@ async function openRekap() {
     }
 
     const recordedDays = snap.size;
-    const counts = {}; // nama -> {H,S,I,A}
+    const counts = {};
     kelasLengkap.forEach(s => { counts[s.name] = { H: 0, S: 0, I: 0, A: 0 }; });
 
     snap.forEach(doc => {
@@ -558,7 +556,6 @@ absenResetBtn.addEventListener('click', async () => {
   }
 });
 
-// ---------- Active link on scroll ----------
 const sections = document.querySelectorAll('section[id], header[id]');
 const navA = document.querySelectorAll('.nav-links a');
 const spy = new IntersectionObserver((entries) => {
@@ -572,7 +569,6 @@ const spy = new IntersectionObserver((entries) => {
 }, { rootMargin: '-45% 0px -45% 0px' });
 sections.forEach(s => spy.observe(s));
 
-// ---------- Reveal on scroll ----------
 const revealEls = document.querySelectorAll('.reveal');
 const revealer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
@@ -584,7 +580,6 @@ const revealer = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 revealEls.forEach(el => revealer.observe(el));
 
-// ---------- Tema Terang / Gelap ----------
 const THEME_KEY = 'aventraTheme';
 const themeToggleBtn = document.getElementById('themeToggle');
 function applyTheme(theme) {
@@ -602,7 +597,6 @@ themeToggleBtn.addEventListener('click', () => {
   try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
 });
 
-// ================= PAPAN PENGUMUMAN =================
 const pengumumanComposer = document.getElementById('pengumumanComposer');
 const pengumumanInput = document.getElementById('pengumumanInput');
 const pengumumanSubmit = document.getElementById('pengumumanSubmit');
@@ -656,7 +650,7 @@ function renderPengumuman(snap) {
 
 let unsubscribePengumuman = null;
 function listenPengumuman() {
-  if (unsubscribePengumuman) return; // sudah jalan, jangan dobel
+  if (unsubscribePengumuman) return;
   unsubscribePengumuman = db.collection('pengumuman').orderBy('createdAtMs', 'desc').limit(50)
     .onSnapshot(renderPengumuman, (err) => console.error('pengumuman:', err));
 }
@@ -680,7 +674,6 @@ pengumumanSubmit.addEventListener('click', async () => {
   pengumumanSubmit.disabled = false;
 });
 
-// ================= JADWAL PELAJARAN =================
 const jadwalGrid = document.getElementById('jadwalGrid');
 const jadwalSubText = document.getElementById('jadwalSubText');
 const hariList = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -766,7 +759,6 @@ function listenJadwal() {
   }, err => console.error('jadwal:', err));
 }
 
-// ================= AGENDA KELAS =================
 const agendaComposer = document.getElementById('agendaComposer');
 const agendaTitleInput = document.getElementById('agendaTitleInput');
 const agendaDateInput = document.getElementById('agendaDateInput');
@@ -788,7 +780,7 @@ function renderAgenda(snap) {
   snap.forEach((doc, i) => {
     const d = doc.data();
     const isPast = d.date && d.date < todayId;
-    const dateParts = (d.date || '').split('-'); // YYYY-MM-DD
+    const dateParts = (d.date || '').split('-');
     const dayNum = dateParts[2] || '--';
     const monLabel = dateParts[1] ? bulanSingkat[parseInt(dateParts[1], 10) - 1] : '';
     const item = document.createElement('div');
@@ -845,10 +837,6 @@ agendaSubmit.addEventListener('click', async () => {
   agendaSubmit.disabled = false;
 });
 
-// ================= ABSEN OTOMATIS GPS (GEOFENCE) =================
-// Admin mengatur satu titik lokasi + radius sekolah (koleksi Firestore
-// "settings", dokumen "geofence"). Siswa yang bertahan di dalam radius
-// itu selama N menit akan otomatis tercatat Hadir untuk tanggal hari ini.
 const geoAdminBox = document.getElementById('geoAdminBox');
 const geoStudentBox = document.getElementById('geoStudentBox');
 const geoLatInput = document.getElementById('geoLat');
@@ -862,11 +850,13 @@ const geoActivateBtn = document.getElementById('geoActivateBtn');
 const geoStopBtn = document.getElementById('geoStopBtn');
 const geoStatusLine = document.getElementById('geoStatusLine');
 
-let geofenceSettings = null; // {lat,lng,radius,minutes}
+let geofenceSettings = null;
 let geoWatchId = null;
 let geoInsideSince = null;
 let geoCountdownTimer = null;
 let geoFirstFixTimer = null;
+let geoOutsideStreak = 0;
+let geoLastLiveWriteTs = 0;
 
 function geofenceDocRef() { return db.collection('settings').doc('geofence'); }
 
@@ -877,6 +867,15 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   const dLng = toRad(lng2 - lng1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearingDegrees(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
 let unsubscribeGeofence = null;
@@ -905,7 +904,7 @@ geoUseLocationBtn.addEventListener('click', () => {
       geoLngInput.value = pos.coords.longitude.toFixed(6);
       const acc = Math.round(pos.coords.accuracy);
       if (acc > 300) {
-        geoAdminStatus.innerHTML = `⚠️ Akurasi lemah (±${acc}m) — kemungkinan besar perangkat ini tidak punya GPS asli (laptop/PC hanya menebak dari WiFi). Sebaiknya ulangi langkah ini pakai HP sambil berdiri di sekolah, baru klik Simpan.`;
+        geoAdminStatus.innerHTML = `⚠️ Akurasi lemah (±${acc}m) — kemungkinan besar perangkat ini tidak punya GPS asli. Sebaiknya ulangi pakai HP sambil berdiri di sekolah, baru klik Simpan.`;
         geoAdminStatus.style.color = 'var(--gold-soft)';
       } else {
         geoAdminStatus.innerHTML = `Lokasi terdeteksi (akurasi ±${acc}m). Klik Simpan Pengaturan.`;
@@ -945,6 +944,32 @@ function setGeoStatus(msg, type) {
   geoStatusLine.className = 'geo-status-line show' + (type ? ' ' + type : '');
 }
 
+function broadcastLiveLocation(pos, dist, acc) {
+  const session = currentSessionInfo();
+  if (!session.role || session.role === 'admin' || !session.name) return;
+  const now = Date.now();
+  if (now - geoLastLiveWriteTs < 4000) return;
+  geoLastLiveWriteTs = now;
+  const bearing = (geofenceSettings && geofenceSettings.lat != null)
+    ? bearingDegrees(geofenceSettings.lat, geofenceSettings.lng, pos.coords.latitude, pos.coords.longitude)
+    : 0;
+  db.collection('liveLocation').doc(session.name).set({
+    name: session.name,
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    dist: Math.round(dist),
+    bearing: Math.round(bearing),
+    acc: acc,
+    updatedAt: now
+  }).catch(e => console.error('liveLocation write:', e));
+}
+
+function clearLiveLocation() {
+  const session = currentSessionInfo();
+  if (!session.role || session.role === 'admin' || !session.name) return;
+  db.collection('liveLocation').doc(session.name).delete().catch(() => {});
+}
+
 function stopGeoWatch(clearMsg) {
   if (geoWatchId !== null) {
     navigator.geolocation.clearWatch(geoWatchId);
@@ -952,9 +977,11 @@ function stopGeoWatch(clearMsg) {
   }
   if (geoFirstFixTimer) { clearTimeout(geoFirstFixTimer); geoFirstFixTimer = null; }
   geoInsideSince = null;
+  geoOutsideStreak = 0;
   if (geoCountdownTimer) { clearInterval(geoCountdownTimer); geoCountdownTimer = null; }
   geoActivateBtn.style.display = 'inline-flex';
   geoStopBtn.style.display = 'none';
+  clearLiveLocation();
   if (clearMsg) geoStatusLine.classList.remove('show');
 }
 
@@ -994,15 +1021,24 @@ function handleGeoPosition(pos) {
   const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, geofenceSettings.lat, geofenceSettings.lng);
   const radius = geofenceSettings.radius || 120;
   const acc = Math.round(pos.coords.accuracy || 0);
+
+  broadcastLiveLocation(pos, dist, acc);
+
   if (dist <= radius) {
+    geoOutsideStreak = 0;
     if (geoInsideSince === null) geoInsideSince = Date.now();
     tickCountdown();
   } else {
-    if (geoInsideSince !== null) {
+    geoOutsideStreak++;
+    if (geoInsideSince !== null && geoOutsideStreak >= 2) {
       geoInsideSince = null;
       setGeoStatus('📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.', 'warn');
+    } else if (geoInsideSince !== null) {
+      tickCountdown();
     } else {
-      setGeoStatus(`Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`, 'warn');
+      let msg = `Belum berada di area sekolah (jarak ±${Math.round(dist)}m dari titik sekolah, akurasi GPS ±${acc}m).`;
+      if (acc > 100) msg += ' Sinyal GPS lemah — coba pindah ke tempat terbuka untuk hasil lebih akurat.';
+      setGeoStatus(msg, 'warn');
     }
   }
 }
@@ -1017,6 +1053,7 @@ function handleGeoError(err) {
 }
 
 geoActivateBtn.addEventListener('click', () => {
+  if (isWeekendDate(todayStr())) { alert('Absensi GPS tidak tersedia pada hari Sabtu/Minggu.'); return; }
   if (!navigator.geolocation) { alert('Perangkat/browser ini tidak mendukung deteksi lokasi.'); return; }
   if (!geofenceSettings || geofenceSettings.lat == null) {
     alert('Lokasi sekolah belum diatur oleh admin. Minta admin mengatur lokasi dulu di halaman Absensi.');
@@ -1026,7 +1063,7 @@ geoActivateBtn.addEventListener('click', () => {
   geoStopBtn.style.display = 'inline-block';
   setGeoStatus('Meminta izin lokasi...', 'warn');
   geoFirstFixTimer = setTimeout(() => {
-    setGeoStatus('Masih mencari sinyal GPS... ini wajar sampai 30 detik, terutama di dalam ruangan. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.', 'warn');
+    setGeoStatus('Masih mencari sinyal GPS... ini wajar sampai 30 detik. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.', 'warn');
   }, 6000);
   geoWatchId = navigator.geolocation.watchPosition(handleGeoPosition, handleGeoError, {
     enableHighAccuracy: true, maximumAge: 5000, timeout: 30000
@@ -1043,20 +1080,206 @@ function updateGeoPanels(date, session) {
     geoStudentBox.style.display = 'none';
     return;
   }
+  if (session.role === 'guest') {
+    geoStudentBox.style.display = 'none';
+    return;
+  }
   const isToday = date === todayStr();
   const alreadySet = !!(currentDayData && currentDayData[session.name]);
-  if (isToday && !alreadySet) {
+  const todayIsWeekend = isWeekendDate(todayStr());
+  if (isToday && !alreadySet && !todayIsWeekend) {
     geoStudentBox.style.display = 'block';
   } else {
     geoStudentBox.style.display = 'none';
-    if (alreadySet) stopGeoWatch(true);
+    if (alreadySet || todayIsWeekend) stopGeoWatch(true);
   }
 }
 
-// ================= HUBUNGKAN KE STATUS LOGIN (auth.js) =================
-// auth.js mengurus login/logout & tampil-sembunyi gerbang login. File ini
-// cukup "dengar" event dari auth.js untuk menyalakan/mematikan fitur yang
-// butuh sesi (absensi, pengumuman, jadwal, agenda, geofence).
+// Fitur radar butuh koleksi Firestore "liveLocation" -- kalau kosong terus,
+// cek Firestore Security Rules sudah izinkan koleksi ini.
+(function initGeoRadar() {
+  let radarBtn = null;
+  let radarModal = null;
+  let radarSvg = null;
+  let radarListUnsub = null;
+  let radarStyleInjected = false;
+
+  function injectRadarStyle() {
+    if (radarStyleInjected) return;
+    radarStyleInjected = true;
+    const style = document.createElement('style');
+    style.textContent = `
+      .geo-radar-btn{margin-top:10px;padding:10px 16px;border-radius:10px;border:1px solid rgba(242,183,5,0.4);background:rgba(242,183,5,0.12);color:#f2b705;font-weight:600;cursor:pointer;font-size:0.9rem;}
+      .geo-radar-btn:hover{background:rgba(242,183,5,0.22);}
+      .geo-radar-overlay{position:fixed;inset:0;background:rgba(6,8,18,0.78);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+      .geo-radar-panel{background:#0e1220;border:1px solid rgba(242,183,5,0.25);border-radius:18px;padding:22px;max-width:520px;width:100%;max-height:90vh;overflow:auto;}
+      .geo-radar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+      .geo-radar-head h3{margin:0;color:#f5f3ec;font-size:1.1rem;}
+      .geo-radar-close{background:none;border:none;color:#f5f3ec;font-size:1.4rem;cursor:pointer;line-height:1;}
+      .geo-radar-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:0.78rem;color:#c9c6bb;}
+      .geo-radar-legend span{display:inline-flex;align-items:center;gap:6px;}
+      .geo-radar-dotlegend{width:10px;height:10px;border-radius:50%;display:inline-block;}
+      .geo-radar-empty{color:#c9c6bb;font-size:0.85rem;text-align:center;padding:18px 0;}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function buildRadarSvg() {
+    const size = 320, c = size / 2;
+    const svgns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('width', '100%');
+    svg.style.maxWidth = '320px';
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
+
+    [1, 0.66, 0.33].forEach((f) => {
+      const ring = document.createElementNS(svgns, 'circle');
+      ring.setAttribute('cx', c); ring.setAttribute('cy', c);
+      ring.setAttribute('r', c * f * 0.92);
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', 'rgba(242,183,5,0.22)');
+      ring.setAttribute('stroke-width', '1');
+      svg.appendChild(ring);
+    });
+    const center = document.createElementNS(svgns, 'circle');
+    center.setAttribute('cx', c); center.setAttribute('cy', c); center.setAttribute('r', 5);
+    center.setAttribute('fill', '#f2b705');
+    svg.appendChild(center);
+    const centerLabel = document.createElementNS(svgns, 'text');
+    centerLabel.setAttribute('x', c); centerLabel.setAttribute('y', c + 18);
+    centerLabel.setAttribute('text-anchor', 'middle');
+    centerLabel.setAttribute('fill', '#f2b705');
+    centerLabel.setAttribute('font-size', '10');
+    centerLabel.textContent = 'Sekolah';
+    svg.appendChild(centerLabel);
+
+    return { svg, size, c };
+  }
+
+  function dotColor(dist, radius) {
+    if (dist <= radius) return '#22c55e';
+    if (dist <= radius * 2.5) return '#eab308';
+    return '#ef4444';
+  }
+
+  function renderRadar(docs) {
+    if (!radarSvg) return;
+    const { svg, c } = radarSvg;
+    svg.querySelectorAll('.geo-dot, .geo-dot-label').forEach(n => n.remove());
+
+    const emptyEl = radarModal.querySelector('.geo-radar-empty');
+    if (!geofenceSettings || geofenceSettings.lat == null) {
+      emptyEl.textContent = 'Atur & simpan lokasi sekolah dulu supaya radar bisa menghitung jarak murid.';
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    const radius = geofenceSettings.radius || 120;
+    const now = Date.now();
+    const active = docs.filter(d => now - (d.updatedAt || 0) < 25000);
+
+    if (active.length === 0) {
+      emptyEl.textContent = 'Belum ada murid yang mengaktifkan absen GPS saat ini.';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    const maxR = c * 0.92;
+    const svgns = 'http://www.w3.org/2000/svg';
+
+    active.forEach((d) => {
+      const dist = d.dist || 0;
+      const bearing = d.bearing || 0;
+      const scaleDist = Math.min(dist / (radius * 2.5), 1) * maxR;
+      const rad = (bearing - 90) * Math.PI / 180;
+      const x = c + scaleDist * Math.cos(rad);
+      const y = c + scaleDist * Math.sin(rad);
+
+      const dot = document.createElementNS(svgns, 'circle');
+      dot.setAttribute('class', 'geo-dot');
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      dot.setAttribute('r', dist <= radius ? 7 : 6);
+      dot.setAttribute('fill', dotColor(dist, radius));
+      if (dist <= radius) {
+        dot.style.filter = 'drop-shadow(0 0 5px rgba(34,197,94,0.9))';
+      }
+      svg.appendChild(dot);
+
+      const label = document.createElementNS(svgns, 'text');
+      label.setAttribute('class', 'geo-dot-label');
+      label.setAttribute('x', x); label.setAttribute('y', y - 10);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('fill', '#f5f3ec');
+      label.setAttribute('font-size', '9');
+      label.textContent = `${(d.name || '').split(' ')[0]} (${dist}m)`;
+      svg.appendChild(label);
+    });
+  }
+
+  function openRadar() {
+    if (!radarModal) {
+      injectRadarStyle();
+      const overlay = document.createElement('div');
+      overlay.className = 'geo-radar-overlay';
+      overlay.innerHTML = `
+        <div class="geo-radar-panel">
+          <div class="geo-radar-head">
+            <h3>🛰️ Radar Lokasi Murid (Live)</h3>
+            <button class="geo-radar-close" type="button">✕</button>
+          </div>
+          <div class="geo-radar-svg-wrap"></div>
+          <div class="geo-radar-empty"></div>
+          <div class="geo-radar-legend">
+            <span><i class="geo-radar-dotlegend" style="background:#ef4444;"></i> Masih jauh</span>
+            <span><i class="geo-radar-dotlegend" style="background:#eab308;"></i> Mendekat</span>
+            <span><i class="geo-radar-dotlegend" style="background:#22c55e;"></i> Di dalam radius sekolah</span>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      radarModal = overlay;
+      radarSvg = buildRadarSvg();
+      overlay.querySelector('.geo-radar-svg-wrap').appendChild(radarSvg.svg);
+      overlay.querySelector('.geo-radar-close').addEventListener('click', closeRadar);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRadar(); });
+    }
+    radarModal.style.display = 'flex';
+    if (!radarListUnsub) {
+      radarListUnsub = db.collection('liveLocation').onSnapshot(snap => {
+        const docs = [];
+        snap.forEach(doc => docs.push(doc.data()));
+        renderRadar(docs);
+      }, err => console.error('liveLocation listen:', err));
+    }
+  }
+
+  function closeRadar() {
+    if (radarModal) radarModal.style.display = 'none';
+    if (radarListUnsub) { radarListUnsub(); radarListUnsub = null; }
+  }
+
+  function ensureRadarButton() {
+    if (radarBtn || !geoAdminBox) return;
+    injectRadarStyle();
+    radarBtn = document.createElement('button');
+    radarBtn.type = 'button';
+    radarBtn.className = 'geo-radar-btn';
+    radarBtn.textContent = '🛰️ Lacak Lokasi Murid (Live)';
+    radarBtn.addEventListener('click', openRadar);
+    geoAdminBox.appendChild(radarBtn);
+  }
+
+  document.addEventListener('aventra:login', () => {
+    if (currentSessionInfo().role === 'admin') ensureRadarButton();
+  });
+  if (window.AventraAuth && window.AventraAuth.getSession() && currentSessionInfo().role === 'admin') {
+    ensureRadarButton();
+  }
+
+  document.addEventListener('aventra:logout', closeRadar);
+})();
 
 function onSessionActive() {
   const session = currentSessionInfo();
@@ -1083,9 +1306,6 @@ function onSessionEnded() {
 document.addEventListener('aventra:login', onSessionActive);
 document.addEventListener('aventra:logout', onSessionEnded);
 
-// Kalau saat script.js ini jalan ternyata sesi sudah aktif (misalnya
-// halaman baru saja di-refresh dan auth.js sudah menemukan sesi lama
-// yang masih berlaku), langsung nyalakan fitur-fitur di atas juga.
 if (window.AventraAuth && window.AventraAuth.getSession()) {
   onSessionActive();
 }

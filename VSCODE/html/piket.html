@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Piket — AVENTRA CLASS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/piket.css">
+</style>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="glow-orb one"></div>
+<div class="glow-orb two"></div>
+
+<div class="nav-wrap" id="navWrap">
+  <nav>
+    <a href="index.html" class="nav-brand">
+      <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="patch">
+      <span class="wordmark">AVENTRA<span> CLASS</span></span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Beranda</a></li>
+      <li><a href="index.html#struktur">Struktur Kelas</a></li>
+      <li><a href="index.html#absensi">Absensi</a></li>
+      <li><a href="piket.html" class="active">Piket</a></li>
+      <li><a href="index.html#jadwal">Jadwal</a></li>
+      <li><a href="index.html#agenda">Agenda</a></li>
+      <li><a href="index.html#footer">Kontak</a></li>
+    </ul>
+    <div class="nav-cta">
+      <span class="btn-ghost">TA 2025/2026</span>
+    </div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Ganti tema terang/gelap"></button>
+    <button class="nav-burger" id="burgerBtn" aria-label="Buka menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</div>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Beranda</a>
+  <a href="index.html#struktur">Struktur Kelas</a>
+  <a href="index.html#absensi">Absensi</a>
+  <a href="piket.html" class="active">Piket</a>
+  <a href="index.html#jadwal">Jadwal</a>
+  <a href="index.html#agenda">Agenda</a>
+  <a href="index.html#footer">Kontak</a>
+</div>
+
+<header class="hero" id="beranda" style="min-height:56vh; padding-top:150px; padding-bottom:60px;">
+  <div class="eyebrow load-in d1">Rutinitas Kelas</div>
+  <h1 class="load-in d2" style="font-size:clamp(38px,7vw,70px);">JADWAL<br>PIKET</h1>
+  <p class="tagline load-in d3" id="piketSubText">Cek siapa piket hari ini, dan tandai kalau tugasnya udah beres.</p>
+</header>
+
+<section class="section" style="padding-top:0;">
+  <div class="section-head reveal">
+    <div class="eyebrow">Piket Harian</div>
+    <h2>Daftar Piket</h2>
+    <p>Data tersinkron otomatis ke semua perangkat lewat server (sama seperti Absensi).</p>
+  </div>
+
+  <div class="piket-controls reveal" id="piketControls" style="display:none;">
+    <input type="text" id="piketNameInput" placeholder="Nama murid" class="absen-date" style="min-width:160px;">
+    <select id="piketDayInput" class="piket-day-select">
+      <option value="Senin">Senin</option>
+      <option value="Selasa">Selasa</option>
+      <option value="Rabu">Rabu</option>
+      <option value="Kamis">Kamis</option>
+      <option value="Jumat">Jumat</option>
+      <option value="Sabtu">Sabtu</option>
+    </select>
+    <button class="btn-add" id="piketAddBtn">+ Tambah Piket</button>
+  </div>
+  <p class="piket-admin-note" id="piketViewOnlyNote" style="display:none;">Kamu masuk sebagai penonton -- hanya admin yang bisa menambah/mengubah jadwal piket. Login dulu di halaman Beranda kalau kamu admin.</p>
+
+  <div id="piketGroups"></div>
+  <p class="piket-note" id="piketNote">Menyambungkan ke server...</p>
+</section>
+
+<footer id="footer">
+  <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="patch">
+  <h4>AVENTRA CLASS</h4>
+  <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
+</footer>
+
+<script src="js/piket.js">
+
+</script>
+</body>
+</html>
