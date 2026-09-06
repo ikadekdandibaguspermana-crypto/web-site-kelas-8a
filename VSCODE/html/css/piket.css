@@ -1,0 +1,40 @@
+.piket-controls{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:26px; align-items: center;}
+.piket-day-select{
+    background: var(--bg-panel); border:1px solid var(--line-soft); border-radius: 12px;
+    padding: 11px 16px; color:var(--text-hi); font-family: var(--font-mono); font-size: 13px; color-scheme: dark;
+    
+}
+body.light-mode .piket-day-select{ color-scheme:light; }
+  .piket-group{ margin-bottom:26px; }
+  .piket-group-title{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--teal); margin-bottom:10px;
+  }
+  .piket-list{ display:flex; flex-direction:column; gap:8px; }
+  .piket-row{
+    display:flex; align-items:center; gap:16px; background:var(--bg-panel);
+    border:1px solid var(--line-soft); border-radius:14px; padding:14px 18px;
+    transition:border-color 0.25s ease, background 0.25s ease;
+  }
+  .piket-row:hover{ border-color:var(--line); background:var(--bg-panel-hi); }
+  .piket-row.selesai{ opacity:0.55; }
+  .piket-name{ flex:1; min-width:0; font-size:14px; font-weight:600; color:var(--text-hi); }
+  .piket-row.selesai .piket-name{ text-decoration:line-through; }
+  .piket-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .piket-btn{
+    font-family:var(--font-mono); font-size:10.5px; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--line-soft); background:transparent; color:var(--text-low); cursor:pointer;
+    transition:all 0.2s ease;
+  }
+  .piket-btn:hover{ color:var(--text-hi); border-color:var(--line); }
+  .piket-btn.done{ background:var(--teal); border-color:var(--teal); color:var(--bg-void); }
+  .piket-btn.del:hover{ color:#ff8a8a; border-color:#ff8a8a; }
+  .piket-empty-day{ font-family:var(--font-mono); font-size:11px; color:var(--text-low); padding:8px 4px; }
+  .piket-note{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-low); margin-top:16px; opacity:0; transition:opacity 0.4s ease;
+  }
+  .piket-note.show{ opacity:1; }
+  .theme-toggle svg{ width:16px; height:16px; }
+  .piket-admin-note{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-low); margin-bottom:14px;
+  }

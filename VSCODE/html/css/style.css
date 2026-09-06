@@ -31,6 +31,20 @@
     position:relative;
   }
 
+  /* ===== Layer background Bumi 3D (Three.js) =====
+     Diletakkan sebelum .starfield di HTML supaya urutan render:
+     warna dasar body -> bumi 3D -> starfield (bintang) -> glow-orb -> konten.
+     pointer-events:none supaya TIDAK PERNAH memblokir klik pada
+     navbar/tombol/link di manapun pada halaman. Drag untuk memutar
+     bumi ditangani lewat elemen #beranda (hero), bukan lewat layer ini. */
+  .earth-canvas-wrap{
+    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  }
+  .earth-canvas-wrap canvas{
+    display:block; width:100% !important; height:100% !important;
+  }
+  body.light-mode .earth-canvas-wrap{ opacity:0.35; }
+
   .starfield{
     position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
@@ -199,6 +213,12 @@
   }
   .patch-badge svg{ width:100%; height:100%; }
   .patch-ring{ transform-origin:75px 75px; animation:spinSlow 20s linear infinite; }
+  .patch-ring-svg{ position:absolute; inset:0; }
+  .patch-badge-img{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:70%; height:70%; border-radius:50%; object-fit:cover;
+    box-shadow:0 0 0 2px rgba(10,13,26,0.35) inset;
+  }
   @keyframes patchPulse{
     0%,100%{ filter:drop-shadow(0 0 0 rgba(242,183,5,0)); }
     50%{ filter:drop-shadow(0 0 20px rgba(242,183,5,0.32)); }

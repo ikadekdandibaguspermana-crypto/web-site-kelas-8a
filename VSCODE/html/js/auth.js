@@ -15,6 +15,8 @@
   const SESSION_KEY = 'aventra_session';
   let isAdminMode = false;
 
+  const IS_LOCAL_DEV = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+
   function getSession() {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
@@ -61,16 +63,35 @@
       : { type: 'student', name: loginName.value, pin: loginPin.value };
 
     try {
-      const res = await fetch('/.netlify/functions/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      let data;
 
-      if (!res.ok || !data.ok) {
-        loginError.textContent = data.error || 'Login gagal. Coba lagi.';
-        return;
+      if (IS_LOCAL_DEV) {
+        await new Promise((r) => setTimeout(r, 250));
+        if (isAdminMode) {
+          if (!loginAdminPass.value.trim()) {
+            loginError.textContent = '[Mode lokal] Isi password apa saja untuk masuk sebagai Admin.';
+            return;
+          }
+          data = { ok: true, token: 'local-dev-token', role: 'admin', name: 'Admin' };
+        } else {
+          if (!loginName.value.trim() || !loginPin.value.trim()) {
+            loginError.textContent = '[Mode lokal] Isi nama & PIN apa saja untuk masuk.';
+            return;
+          }
+          data = { ok: true, token: 'local-dev-token', role: 'student', name: loginName.value.trim() };
+        }
+      } else {
+        const res = await fetch('/.netlify/functions/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          loginError.textContent = data.error || 'Login gagal. Coba lagi.';
+          return;
+        }
       }
 
       saveSession(data);
@@ -120,11 +141,18 @@
     guestBtn.id = 'loginGuestBtn';
     guestBtn.className = 'login-toggle';
     guestBtn.style.marginTop = '8px';
-    guestBtn.textContent = '👀 Lihat sebagai Tamu (tanpa login)';
+    guestBtn.textContent = 'Masuk sebagai Tamu (tanpa login)';
     guestBtn.addEventListener('click', doLoginGuest);
     loginBoxEl.appendChild(guestBtn);
   }
   setupGuestButton();
+
+  if (IS_LOCAL_DEV) {
+    const titleEl = document.getElementById('loginTitle');
+    const subEl = document.getElementById('loginSub');
+    if (titleEl) titleEl.textContent = '⚠️ Mode Testing Lokal';
+    if (subEl) subEl.textContent = 'Nama/PIN/password BEBAS (tidak divalidasi ke server). Ini cuma buat lihat tampilan di Live Server.';
+  }
 
   const existing = getSession();
   if (existing) {
