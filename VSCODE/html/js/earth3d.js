@@ -11,9 +11,13 @@
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var isDesktopPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var isMobileScreen = window.innerWidth < 768;
 
   var TEX_BASE = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/';
   var EARTH_RADIUS = 2.15;
+
+  // Detail sphere lebih rendah di HP biar gak berat
+  var SPHERE_SEGMENTS = isMobileScreen ? 32 : 64;
 
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(
@@ -22,7 +26,8 @@
     0.1,
     1000
   );
-  camera.position.set(0, 0.35, 6.4);
+  // Jarak kamera lebih jauh di HP biar bumi gak kegedean nutupin layar
+  camera.position.set(0, 0.35, isMobileScreen ? 9.5 : 6.4);
 
   var renderer;
   try {
@@ -31,19 +36,19 @@
     console.warn('[earth3d] WebGL tidak didukung perangkat ini. Background bumi 3D dilewati.');
     return;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Batasi pixel ratio lebih ketat di HP biar rendernya lebih ringan
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileScreen ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x000000, 0); 
+  renderer.setClearColor(0x000000, 0);
   wrap.appendChild(renderer.domElement);
 
-  // ---------- Cahaya (matahari + sedikit cahaya sisi malam) ----------
   var sunLight = new THREE.DirectionalLight(0xfff3d6, 1.4);
   scene.add(sunLight);
 
   var ambient = new THREE.AmbientLight(0x1c2748, 1.15);
   scene.add(ambient);
 
-  // ---------- Grup bumi (tilt sumbu 23.4°) ----------
+
   var earthGroup = new THREE.Group();
   earthGroup.rotation.z = (23.4 * Math.PI) / 180;
   scene.add(earthGroup);
@@ -56,7 +61,7 @@
     specular: 0x2a2a2a
   });
   var earthMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(EARTH_RADIUS, 64, 64),
+    new THREE.SphereGeometry(EARTH_RADIUS, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
     earthMat
   );
   earthGroup.add(earthMesh);
@@ -81,14 +86,13 @@
     earthMat.needsUpdate = true;
   });
 
-  // ---------- Awan tipis ----------
   var cloudMat = new THREE.MeshLambertMaterial({
     transparent: true,
     opacity: 0.5,
     depthWrite: false
   });
   var cloudMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(EARTH_RADIUS * 1.015, 64, 64),
+    new THREE.SphereGeometry(EARTH_RADIUS * 1.015, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
     cloudMat
   );
   earthGroup.add(cloudMesh);
@@ -98,7 +102,6 @@
     cloudMat.needsUpdate = true;
   });
 
-  // ---------- Glow atmosfer (fresnel) ----------
   var atmoMat = new THREE.ShaderMaterial({
     vertexShader: [
       'varying vec3 vNormal;',
@@ -119,10 +122,11 @@
     transparent: true
   });
   var atmoMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(EARTH_RADIUS * 1.18, 64, 64),
+    new THREE.SphereGeometry(EARTH_RADIUS * 1.18, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
     atmoMat
   );
   scene.add(atmoMesh);
+
 
   (function addStars() {
     var starCount = 800;
@@ -151,11 +155,11 @@
     var now = new Date();
     var utcHours =
       now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-    var subsolarLon = (12 - utcHours) * 15; // derajat bujur tempat matahari tepat di atas
+    var subsolarLon = (12 - utcHours) * 15;
 
     var startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 0));
     var dayOfYear = Math.floor((now - startOfYear) / 86400000);
-    var decl = -23.44 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10)); // derajat lintang
+    var decl = -23.44 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10));
 
     var lonRad = (subsolarLon * Math.PI) / 180;
     var latRad = (decl * Math.PI) / 180;
@@ -184,9 +188,70 @@
     controls.maxPolarAngle = Math.PI * 0.82;
   }
 
+
+  if (!isDesktopPointer) {
+    (function setupMobileDrag() {
+      var dragEl = document.getElementById('beranda');
+      if (!dragEl) return;
+
+      var spherical = new THREE.Spherical();
+      spherical.setFromVector3(camera.position);
+
+      var touchActive = false;
+      var decided = null;
+      var startX = 0, startY = 0, lastX = 0, lastY = 0;
+      var ROTATE_SENSITIVITY = 0.008;
+      var DIRECTION_THRESHOLD = 8;
+
+      dragEl.addEventListener('touchstart', function (e) {
+        if (e.touches.length !== 1) return;
+        touchActive = true;
+        decided = null;
+        startX = lastX = e.touches[0].clientX;
+        startY = lastY = e.touches[0].clientY;
+      }, { passive: true });
+
+      dragEl.addEventListener('touchmove', function (e) {
+        if (!touchActive || e.touches.length !== 1) return;
+        var x = e.touches[0].clientX;
+        var y = e.touches[0].clientY;
+
+        if (decided === null) {
+          var dx0 = x - startX;
+          var dy0 = y - startY;
+          if (Math.abs(dx0) < DIRECTION_THRESHOLD && Math.abs(dy0) < DIRECTION_THRESHOLD) {
+            lastX = x; lastY = y;
+            return;
+          }
+          // Lebih gampang kedeteksi sebagai 'rotate' walau geserannya agak diagonal
+          decided = Math.abs(dx0) > Math.abs(dy0) * 0.8 ? 'rotate' : 'scroll';
+        }
+
+        if (decided === 'rotate') {
+          e.preventDefault();
+          var dx = x - lastX;
+          spherical.theta -= dx * ROTATE_SENSITIVITY;
+          camera.position.setFromSpherical(spherical);
+          camera.lookAt(0, 0, 0);
+        }
+
+
+        lastX = x; lastY = y;
+      }, { passive: false });
+
+      dragEl.addEventListener('touchend', function () {
+        touchActive = false;
+        decided = null;
+      }, { passive: true });
+    })();
+  }
+
   function onResize() {
+    isMobileScreen = window.innerWidth < 768;
     camera.aspect = window.innerWidth / window.innerHeight;
+    camera.position.z = isMobileScreen ? 9.5 : 6.4;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileScreen ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
   window.addEventListener('resize', onResize);
