@@ -2,6 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="hosting-provider" content="Netlify">
+<meta name="netlify-deploy" content="https://netlify.new/?utm_campaign=ai-legible&amp;utm_source=meta&amp;utm_medium=referral&amp;utm_id=399d1102-dc4f-41dd-873c-d0a928095326">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,13 +17,14 @@
 </head>
 <body>
 
+<div id="earthCanvasWrap" class="earth-canvas-wrap" aria-hidden="true"></div>
 <div class="starfield"></div>
 <div class="glow-orb one"></div>
 <div class="glow-orb two"></div>
 
 <div class="login-gate" id="loginGate">
   <div class="login-box">
-    <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="login-patch">
+    <img class="login-patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
     <h2 id="loginTitle">Masuk ke Aventra Class</h2>
     <p class="sub" id="loginSub">Masukkan nama dan PIN kamu persis seperti pada daftar absensi.</p>
 
@@ -57,7 +60,7 @@
 <div class="nav-wrap" id="navWrap">
   <nav>
     <a href="#beranda" class="nav-brand">
-      <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="patch">
+      <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
       <span class="wordmark">AVENTRA<span> CLASS</span></span>
     </a>
     <ul class="nav-links" id="navLinks">
@@ -94,10 +97,20 @@
   <div class="spotlight" id="spotlight"></div>
   <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
   <h1 class="load-in d2">AVENTRA<br>CLASS</h1>
-  <p class="tagline load-in d3">Kelas yang <strong>menjelajah bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
+  <p class="tagline load-in d3">Kelas yang <strong>jatuh dan bangkit bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
 
   <div class="patch-badge load-in d4">
-    <img src="asset/logo-aventra-400.png" alt="Logo Aventra Class" style="width:100%;height:100%;border-radius:50%;">
+    <svg class="patch-ring-svg" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle class="patch-ring" cx="75" cy="75" r="72" stroke="#f2b705" stroke-width="1.4" stroke-dasharray="3 5" opacity="0.5"/>
+      <circle cx="75" cy="75" r="61" fill="url(#patchGrad)"/>
+      <defs>
+        <linearGradient id="patchGrad" x1="15" y1="15" x2="135" y2="135" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#f7d158"/>
+          <stop offset="1" stop-color="#2fd4c4"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <img class="patch-badge-img" src="css/asset/logo-aventra-400.png" alt="Logo Aventra Class">
   </div>
 
   <div class="stat-row load-in d5">
@@ -356,14 +369,18 @@
   </div>
 </div>
 
+
 <footer id="footer">
-  <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="patch">
+  <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
   <h4>AVENTRA CLASS</h4>
   <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
 </footer>
 
-<!-- auth.js menangani login lewat server (Netlify Function), aman dilihat publik. -->
+
 <script src="js/auth.js"></script>
 <script src="js/script.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+<script src="js/earth3d.js"></script>
 </body>
 </html>
