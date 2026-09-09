@@ -15,12 +15,105 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="gate-pending">
 
 <div id="earthCanvasWrap" class="earth-canvas-wrap" aria-hidden="true"></div>
 <div class="starfield"></div>
 <div class="glow-orb one"></div>
 <div class="glow-orb two"></div>
+
+<div class="gate-landing" id="gateLanding">
+
+  <div class="nav-wrap" id="gateNavWrap">
+    <nav>
+      <a href="#gateTop" class="nav-brand">
+        <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
+        <span class="wordmark">AVENTRA<span> CLASS</span></span>
+      </a>
+      <ul class="nav-links" id="gateNavLinks">
+        <li><a href="#gatePilih">Masuk</a></li>
+        <li><a href="#gateFaq">FAQ</a></li>
+      </ul>
+      <div class="nav-cta">
+        <span class="btn-ghost">TA 2025/2026</span>
+      </div>
+      <button class="nav-burger" id="gateBurgerBtn" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </div>
+  <div class="mobile-menu" id="gateMobileMenu">
+    <a href="#gatePilih">Masuk</a>
+    <a href="#gateFaq">FAQ</a>
+  </div>
+
+  <header class="hero" id="gateTop" style="min-height:90vh;">
+    <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
+    <h1 class="load-in d2">AVENTRA<br>CLASS</h1>
+    <p class="tagline load-in d3">Pilih cara kamu masuk ke website kelas. Setiap peran punya tampilan &amp; akses yang berbeda.</p>
+    <div class="scroll-cue load-in d6">GULIR &nbsp;↓</div>
+  </header>
+
+  <section class="section" id="gatePilih">
+    <div class="section-head reveal">
+      <div class="eyebrow">Mulai</div>
+      <h2>Masuk Sebagai</h2>
+      <p>Klik salah satu kartu di bawah sesuai peran kamu.</p>
+    </div>
+
+    <div class="gate-card-grid stagger-container">
+      <button type="button" class="gate-card tilt stagger-item" data-gate="student">
+        <span class="gate-card-icon">🎓</span>
+        <h3>Murid</h3>
+        <p>Masuk pakai nama &amp; PIN kamu, buat isi absensi &amp; lihat info kelas.</p>
+      </button>
+      <button type="button" class="gate-card tilt stagger-item" data-gate="guru">
+        <span class="gate-card-icon">👩‍🏫</span>
+        <h3>Guru</h3>
+        <p>Khusus wali kelas, lihat &amp; kelola semua data kelas.</p>
+      </button>
+      <button type="button" class="gate-card tilt stagger-item" data-gate="admin">
+        <span class="gate-card-icon">🛡️</span>
+        <h3>Admin</h3>
+        <p>Akses penuh pengelolaan website &amp; data kelas.</p>
+      </button>
+      <button type="button" class="gate-card tilt stagger-item" data-gate="guest">
+        <span class="gate-card-icon">👀</span>
+        <h3>Tamu</h3>
+        <p>Lihat-lihat saja tanpa login, tanpa bisa ubah data.</p>
+      </button>
+    </div>
+  </section>
+
+  <section class="section" id="gateFaq">
+    <div class="section-head reveal">
+      <div class="eyebrow">Bantuan</div>
+      <h2>Pertanyaan Umum (FAQ)</h2>
+      <p>Belum diisi lengkap — tambahkan pertanyaan &amp; jawaban kalian sendiri di sini.</p>
+    </div>
+
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary>Bagaimana cara login sebagai murid?</summary>
+        <p>Klik kartu "Murid" di atas, lalu masukkan nama lengkap/panggilan dan PIN 4 digit kamu persis seperti di daftar absensi.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Saya lupa PIN saya, harus bagaimana?</summary>
+        <p>Hubungi admin atau wali kelas untuk mengecek/mereset PIN kamu.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Apa bedanya masuk sebagai Tamu?</summary>
+        <p>Sebagai Tamu, kamu bisa melihat info kelas &amp; status absensi semua murid secara real-time, tapi tidak bisa mengubah apa pun.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer id="gateFooter">
+    <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
+    <h4>AVENTRA CLASS</h4>
+    <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
+  </footer>
+</div>
 
 <div class="login-gate" id="loginGate">
   <div class="login-box">
@@ -46,6 +139,17 @@
       </div>
     </div>
 
+    <div id="loginFormGuru" style="display:none;">
+      <div class="login-field">
+        <label for="loginGuruName">Nama Guru</label>
+        <input type="text" id="loginGuruName" autocomplete="off" placeholder="Contoh: Husnanda Arief A, S.Pd.">
+      </div>
+      <div class="login-field">
+        <label for="loginGuruPass">Password Guru</label>
+        <input type="password" id="loginGuruPass" autocomplete="off" placeholder="••••••••">
+      </div>
+    </div>
+
     <button class="login-submit" id="loginSubmit">Masuk</button>
     <p class="login-error" id="loginError"></p>
     <button class="login-toggle" id="loginToggle">Masuk sebagai Admin</button>
@@ -67,6 +171,7 @@
       <li><a href="#beranda" class="active">Beranda</a></li>
       <li><a href="#struktur">Struktur Kelas</a></li>
       <li><a href="#absensi">Absensi</a></li>
+      <li><a href="#jurnal">Jurnal Guru</a></li>
       <li><a href="#kegiatan">Kegiatan</a></li>
       <li><a href="#pengumuman">Pengumuman</a></li>
       <li><a href="#jadwal">Jadwal</a></li>
@@ -86,6 +191,7 @@
   <a href="#beranda">Beranda</a>
   <a href="#struktur">Struktur Kelas</a>
   <a href="#absensi">Absensi</a>
+  <a href="#jurnal">Jurnal Guru</a>
   <a href="#kegiatan">Kegiatan</a>
   <a href="#pengumuman">Pengumuman</a>
   <a href="#jadwal">Jadwal</a>
@@ -97,7 +203,7 @@
   <div class="spotlight" id="spotlight"></div>
   <div class="eyebrow load-in d1">Tahun Ajaran 2025 / 2026</div>
   <h1 class="load-in d2">AVENTRA<br>CLASS</h1>
-  <p class="tagline load-in d3">Kelas yang <strong>jatuh dan bangkit bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
+  <p class="tagline load-in d3">Kelas yang <strong>menjelajah bersama</strong>, belajar dengan rasa ingin tahu, dan <strong>tumbuh bersama</strong> menuju versi terbaik dari diri kami.</p>
 
   <div class="patch-badge load-in d4">
     <svg class="patch-ring-svg" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -191,6 +297,13 @@
     <p id="absenSubText">Tandai kehadiran murid setiap hari. Status tersimpan otomatis ke server dan langsung terlihat di semua perangkat.</p>
   </div>
 
+  <div class="notif-panel reveal" id="notifPanel" style="display:none;">
+    <h4>🔔 Izin &amp; Sakit Terbaru <span class="notif-badge" id="notifBadge">0</span></h4>
+    <p class="notif-sub">Pengajuan izin/sakit dari 3 hari terakhir. Klik salah satu buat lihat detailnya.</p>
+    <div class="notif-list" id="notifList"></div>
+    <p class="notif-empty" id="notifEmpty" style="display:none;">Belum ada izin/sakit baru dalam 3 hari terakhir.</p>
+  </div>
+
   <div class="absen-controls reveal">
     <select class="absen-month" id="absenMonth"></select>
     <input type="date" class="absen-date" id="absenDate">
@@ -246,6 +359,29 @@
 
   <div class="absen-list stagger-container" id="absenList"></div>
   <p class="absen-note" id="absenNote">Tersimpan otomatis</p>
+</section>
+
+<section class="section" id="jurnal">
+  <div class="section-head reveal">
+    <div class="eyebrow">Dokumentasi Guru</div>
+    <h2>Jurnal Mengajar</h2>
+    <p id="jurnalSubText">Catatan kehadiran &amp; kegiatan mengajar guru — tanggal, mata pelajaran, dan materi yang diajarkan.</p>
+  </div>
+
+  <div class="composer-box reveal" id="jurnalComposer" style="display:none;">
+    <div class="composer-row">
+      <input type="text" id="jurnalMapelInput" placeholder="Mata pelajaran (contoh: Matematika)">
+      <input type="date" id="jurnalTanggalInput">
+    </div>
+    <textarea id="jurnalCatatanInput" placeholder="Materi/catatan kegiatan mengajar hari ini..."></textarea>
+    <div class="composer-row" style="align-items:center;">
+      <button class="btn-add" id="jurnalSubmit">Simpan Jurnal</button>
+      <span class="admin-only-note" id="jurnalGuruNote"></span>
+    </div>
+  </div>
+
+  <div class="jurnal-list stagger-container" id="jurnalList"></div>
+  <p class="list-empty" id="jurnalEmpty" style="display:none;">Belum ada jurnal mengajar tercatat.</p>
 </section>
 
 <section class="section" id="kegiatan">
@@ -369,6 +505,91 @@
   </div>
 </div>
 
+<div class="izin-modal" id="izinModal">
+  <div class="izin-panel">
+    <button class="izin-close" id="izinClose" type="button">✕</button>
+    <div class="eyebrow" style="margin-bottom:6px;">Tandai Izin</div>
+    <h3 id="izinModalTitle">Isi Keterangan Izin</h3>
+    <p class="izin-sub">Wajib isi keterangan &amp; lampirkan foto bukti (surat izin/foto sakit, dsb). Hanya guru/wali kelas (admin) yang bisa melihat isian ini.</p>
+
+    <div class="izin-field">
+      <label for="izinTextInput">Keterangan</label>
+      <textarea id="izinTextInput" placeholder="Contoh: Izin ada acara keluarga, sudah ada surat dari orang tua"></textarea>
+    </div>
+
+    <div class="izin-field">
+      <label for="izinPhotoInput">Foto Bukti</label>
+      <input type="file" id="izinPhotoInput" accept="image/*" capture="environment">
+      <div class="izin-photo-preview" id="izinPhotoPreview" style="display:none;">
+        <img id="izinPhotoPreviewImg" alt="Preview foto bukti">
+      </div>
+    </div>
+
+    <p class="izin-error" id="izinError"></p>
+
+    <div class="izin-actions">
+      <button class="izin-cancel" id="izinCancel" type="button">Batal</button>
+      <button class="izin-submit" id="izinSubmit" type="button">Kirim &amp; Tandai Izin</button>
+    </div>
+  </div>
+</div>
+
+<div class="izin-view-modal" id="izinViewModal">
+  <div class="izin-view-panel">
+    <button class="izin-close" id="izinViewClose" type="button">✕</button>
+    <div class="eyebrow" style="margin-bottom:6px;">Detail Izin</div>
+    <h3 id="izinViewName">-</h3>
+    <p class="izin-view-date" id="izinViewDate">-</p>
+    <div class="izin-view-body" id="izinViewBody">
+      <p class="izin-view-status" id="izinViewStatus">Memuat...</p>
+      <p class="izin-view-text" id="izinViewText" style="display:none;"></p>
+      <img class="izin-view-photo" id="izinViewPhoto" alt="Foto bukti izin" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<div class="sakit-modal" id="sakitModal">
+  <div class="sakit-panel">
+    <button class="sakit-close" id="sakitClose" type="button">✕</button>
+    <div class="eyebrow" style="margin-bottom:6px;">Tandai Sakit</div>
+    <h3 id="sakitModalTitle">Isi Keterangan Sakit</h3>
+    <p class="sakit-sub">Wajib isi keterangan &amp; lampirkan foto bukti (surat sakit, dsb). Hanya guru/wali kelas (admin) yang bisa melihat isian ini.</p>
+
+    <div class="sakit-field">
+      <label for="sakitTextInput">Keterangan</label>
+      <textarea id="sakitTextInput" placeholder="Contoh: Sakit demam, sudah ada surat dari dokter"></textarea>
+    </div>
+
+    <div class="sakit-field">
+      <label for="sakitPhotoInput">Foto Bukti</label>
+      <input type="file" id="sakitPhotoInput" accept="image/*" capture="environment">
+      <div class="sakit-photo-preview" id="sakitPhotoPreview" style="display:none;">
+        <img id="sakitPhotoPreviewImg" alt="Preview foto bukti">
+      </div>
+    </div>
+
+    <p class="sakit-error" id="sakitError"></p>
+
+    <div class="sakit-actions">
+      <button class="sakit-cancel" id="sakitCancel" type="button">Batal</button>
+      <button class="sakit-submit" id="sakitSubmit" type="button">Kirim &amp; Tandai Sakit</button>
+    </div>
+  </div>
+</div>
+
+<div class="sakit-view-modal" id="sakitViewModal">
+  <div class="sakit-view-panel">
+    <button class="sakit-close" id="sakitViewClose" type="button">✕</button>
+    <div class="eyebrow" style="margin-bottom:6px;">Detail Sakit</div>
+    <h3 id="sakitViewName">-</h3>
+    <p class="sakit-view-date" id="sakitViewDate">-</p>
+    <div class="sakit-view-body" id="sakitViewBody">
+      <p class="sakit-view-status" id="sakitViewStatus">Memuat...</p>
+      <p class="sakit-view-text" id="sakitViewText" style="display:none;"></p>
+      <img class="sakit-view-photo" id="sakitViewPhoto" alt="Foto bukti sakit" style="display:none;">
+    </div>
+  </div>
+</div>
 
 <footer id="footer">
   <img class="patch" src="css/asset/logo-aventra-120.png" alt="Logo Aventra Class">
@@ -376,8 +597,8 @@
   <p>MENJELAJAH BERSAMA · TUMBUH BERSAMA · TA 2025/2026</p>
 </footer>
 
-
 <script src="js/auth.js"></script>
+<script src="js/gateway.js"></script>
 <script src="js/script.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>

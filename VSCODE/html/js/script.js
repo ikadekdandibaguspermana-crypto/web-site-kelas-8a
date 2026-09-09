@@ -11,6 +11,16 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 function absenDocRef(dateStr) { return db.collection('absensi').doc(dateStr); }
 
+function izinDetailDocRef(dateStr, studentName) {
+  const safeName = String(studentName || '').replace(/\//g, '-');
+  return db.collection('izinDetail').doc(`${dateStr}__${safeName}`);
+}
+
+function sakitDetailDocRef(dateStr, studentName) {
+  const safeName = String(studentName || '').replace(/\//g, '-');
+  return db.collection('sakitDetail').doc(`${dateStr}__${safeName}`);
+}
+
 const roster = [
   "Casey","Redi","Rizki","Alit Payama",
   "Novi","Ary",
@@ -48,6 +58,7 @@ function currentSessionInfo() {
   const s = window.AventraAuth ? window.AventraAuth.getSession() : null;
   if (!s || !s.role) return { role: null, name: null };
   if (s.role === 'admin') return { role: 'admin', name: 'Admin' };
+  if (s.role === 'guru') return { role: 'guru', name: s.name || 'Guru' };
   if (s.role === 'guest') return { role: 'guest', name: 'Tamu' };
   const role = pengurusNameSet.has((s.name || '').trim().toLowerCase()) ? 'pengurus' : 'student';
   return { role, name: s.name };
@@ -60,6 +71,18 @@ function canManageInfo() {
   const r = currentSessionInfo().role;
   return r === 'admin' || r === 'pengurus';
 }
+// Guru (wali kelas) & admin sama-sama boleh lihat keterangan+foto Izin/Sakit murid,
+// tapi guru TIDAK boleh reset absensi, atur GPS, dsb (itu tetap admin-only).
+function canViewSiswaDetail() {
+  const r = currentSessionInfo().role;
+  return r === 'admin' || r === 'guru';
+}
+// Khusus guru & admin yang boleh isi/kelola Jurnal Mengajar.
+function canManageJurnal() {
+  const r = currentSessionInfo().role;
+  return r === 'admin' || r === 'guru';
+}
+
 
 const rosterGrid = document.getElementById('rosterGrid');
 document.getElementById('rosterCount').textContent = roster.length;
@@ -306,10 +329,12 @@ function ensureWeekendBanner() {
 function paintAbsensi(date, session) {
   const dayData = currentDayData || {};
   const isAdmin = session.role === 'admin';
+  const isGuru = session.role === 'guru';
   const isGuest = session.role === 'guest';
-  const viewAll = isAdmin || isGuest;
+  const viewAll = isAdmin || isGuru || isGuest;
   const weekend = isWeekendDate(date);
-  const readOnly = weekend || isGuest;
+  // Guru cuma boleh LIHAT absensi murid (buat dokumentasi), bukan mengubahnya.
+  const readOnly = weekend || isGuest || isGuru;
 
   const banner = ensureWeekendBanner();
   if (weekend) {
@@ -342,6 +367,8 @@ function paintAbsensi(date, session) {
     const num = String(globalIndex + 1).padStart(2, '0');
     const current = dayData[student.name] || '';
     const disabledAttr = readOnly ? 'disabled' : '';
+    const hasIzinNote = current === 'I';
+    const hasSakitNote = current === 'S';
     row.innerHTML = `
       <div class="absen-num">${num}</div>
       <div class="absen-name">
@@ -353,24 +380,55 @@ function paintAbsensi(date, session) {
         <button class="absen-btn ${current==='S'?'active':''}" data-s="S" ${disabledAttr}>Sakit</button>
         <button class="absen-btn ${current==='I'?'active':''}" data-s="I" ${disabledAttr}>Izin</button>
         <button class="absen-btn ${current==='A'?'active':''}" data-s="A" ${disabledAttr}>Alpa</button>
+        ${canViewSiswaDetail() && hasIzinNote ? `<button type="button" class="absen-izin-view-btn">🔍 Lihat Detail Izin</button>` : ''}
+        ${canViewSiswaDetail() && hasSakitNote ? `<button type="button" class="absen-sakit-view-btn">🔍 Lihat Detail Sakit</button>` : ''}
       </div>
     `;
+    if (canViewSiswaDetail() && hasIzinNote) {
+      row.querySelector('.absen-izin-view-btn').addEventListener('click', () => {
+        openIzinViewModal(date, student);
+      });
+    }
+    if (canViewSiswaDetail() && hasSakitNote) {
+      row.querySelector('.absen-sakit-view-btn').addEventListener('click', () => {
+        openSakitViewModal(date, student);
+      });
+    }
     row.querySelectorAll('.absen-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (readOnly) return;
         if (!isAdmin && !isMe) return;
         const status = btn.getAttribute('data-s');
-        const newValue = dayData[student.name] === status
-          ? firebase.firestore.FieldValue.delete()
-          : status;
-        btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = true);
+        const turningOn = dayData[student.name] !== status;
+        const newValue = turningOn ? status : firebase.firestore.FieldValue.delete();
+        const btnGroup = btn.closest('.absen-btns').querySelectorAll('.absen-btn');
+
+        // Khusus tombol "Izin"/"Sakit" yang baru DINYALAKAN: wajib isi keterangan + foto dulu
+        // lewat modal, sebelum status beneran disimpan ke Firestore.
+        if (status === 'I' && turningOn) {
+          openIzinModal({ date, student, btnGroup });
+          return;
+        }
+        if (status === 'S' && turningOn) {
+          openSakitModal({ date, student, btnGroup });
+          return;
+        }
+
+        btnGroup.forEach(b => b.disabled = true);
         try {
           await absenDocRef(date).set({ [student.name]: newValue }, { merge: true });
+          // Kalau status Izin/Sakit dimatikan (toggle off), hapus juga detail keterangan+foto-nya.
+          if (status === 'I' && !turningOn) {
+            izinDetailDocRef(date, student.name).delete().catch(() => {});
+          }
+          if (status === 'S' && !turningOn) {
+            sakitDetailDocRef(date, student.name).delete().catch(() => {});
+          }
           flashSaved(date);
         } catch (e) {
           console.error(e);
           alert('Gagal menyimpan absensi. Cek koneksi internet lalu coba lagi.');
-          btn.closest('.absen-btns').querySelectorAll('.absen-btn').forEach(b => b.disabled = readOnly);
+          btnGroup.forEach(b => b.disabled = readOnly);
         }
       });
     });
@@ -398,6 +456,411 @@ function flashSaved(date) {
   absenNote.classList.add('show');
   clearTimeout(flashTimer);
   flashTimer = setTimeout(() => absenNote.classList.remove('show'), 1600);
+}
+
+// Catat notifikasi ringan tiap kali ada Izin/Sakit baru, buat panel
+// notifikasi khusus admin & guru. Tidak menyimpan foto (biar ringan) --
+// foto/keterangan lengkapnya tetap di izinDetail/sakitDetail.
+function writeNotifikasi(type, studentName, date) {
+  db.collection('notifikasi').add({
+    type, studentName, date,
+    createdAtMs: Date.now(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(e => console.error('notifikasi:', e));
+}
+
+// ================= FORM IZIN (keterangan + foto) =================
+const izinModal = document.getElementById('izinModal');
+const izinModalTitle = document.getElementById('izinModalTitle');
+const izinTextInput = document.getElementById('izinTextInput');
+const izinPhotoInput = document.getElementById('izinPhotoInput');
+const izinPhotoPreview = document.getElementById('izinPhotoPreview');
+const izinPhotoPreviewImg = document.getElementById('izinPhotoPreviewImg');
+const izinError = document.getElementById('izinError');
+const izinSubmitBtn = document.getElementById('izinSubmit');
+const izinCancelBtn = document.getElementById('izinCancel');
+const izinCloseBtn = document.getElementById('izinClose');
+
+let izinPendingCtx = null; // { date, student, btnGroup }
+let izinPendingPhotoDataUrl = null;
+
+function resetIzinForm() {
+  izinTextInput.value = '';
+  izinPhotoInput.value = '';
+  izinPhotoPreview.style.display = 'none';
+  izinPhotoPreviewImg.src = '';
+  izinError.textContent = '';
+  izinPendingPhotoDataUrl = null;
+  izinSubmitBtn.disabled = false;
+  izinSubmitBtn.textContent = 'Kirim & Tandai Izin';
+}
+
+function openIzinModal(ctx) {
+  resetIzinForm();
+  izinPendingCtx = ctx;
+  izinModalTitle.textContent = `Isi Keterangan Izin — ${ctx.student.name}`;
+  izinModal.classList.add('open');
+}
+
+function closeIzinModal() {
+  izinModal.classList.remove('open');
+  if (izinPendingCtx && izinPendingCtx.btnGroup) {
+    izinPendingCtx.btnGroup.forEach(b => { b.disabled = false; });
+  }
+  izinPendingCtx = null;
+}
+
+// Kompres foto di browser sebelum disimpan (biar ringan & aman di bawah limit
+// ukuran dokumen Firestore), lalu ubah jadi data URL base64.
+function compressImageFile(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+      reject(new Error('File yang dipilih bukan gambar.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Gagal membaca file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Gagal memuat gambar.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxDim) {
+          height = Math.round(height * (maxDim / width));
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round(width * (maxDim / height));
+          height = maxDim;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+izinPhotoInput.addEventListener('change', async () => {
+  const file = izinPhotoInput.files && izinPhotoInput.files[0];
+  if (!file) return;
+  izinError.textContent = '';
+  izinPhotoPreview.style.display = 'none';
+  try {
+    const dataUrl = await compressImageFile(file, 640, 0.55);
+    izinPendingPhotoDataUrl = dataUrl;
+    izinPhotoPreviewImg.src = dataUrl;
+    izinPhotoPreview.style.display = 'block';
+  } catch (e) {
+    console.error(e);
+    izinPendingPhotoDataUrl = null;
+    izinError.textContent = 'Gagal memproses foto. Coba pilih foto lain.';
+  }
+});
+
+izinSubmitBtn.addEventListener('click', async () => {
+  if (!izinPendingCtx) return;
+  const text = izinTextInput.value.trim();
+  if (!text) {
+    izinError.textContent = 'Keterangan wajib diisi.';
+    return;
+  }
+  if (!izinPendingPhotoDataUrl) {
+    izinError.textContent = 'Foto bukti wajib dilampirkan.';
+    return;
+  }
+  izinError.textContent = '';
+  izinSubmitBtn.disabled = true;
+  izinSubmitBtn.textContent = 'Mengirim...';
+
+  const { date, student } = izinPendingCtx;
+  const session = currentSessionInfo();
+
+  try {
+    await izinDetailDocRef(date, student.name).set({
+      text,
+      photo: izinPendingPhotoDataUrl,
+      by: session.name || student.name,
+      at: Date.now()
+    });
+    await absenDocRef(date).set({ [student.name]: 'I' }, { merge: true });
+    writeNotifikasi('izin', student.name, date);
+    flashSaved(date);
+    closeIzinModal();
+  } catch (e) {
+    console.error(e);
+    izinError.textContent = 'Gagal menyimpan. Cek koneksi internet lalu coba lagi.';
+    izinSubmitBtn.disabled = false;
+    izinSubmitBtn.textContent = 'Kirim & Tandai Izin';
+  }
+});
+
+izinCancelBtn.addEventListener('click', closeIzinModal);
+izinCloseBtn.addEventListener('click', closeIzinModal);
+izinModal.addEventListener('click', (e) => { if (e.target === izinModal) closeIzinModal(); });
+
+// ================= VIEWER DETAIL IZIN (khusus admin) =================
+const izinViewModal = document.getElementById('izinViewModal');
+const izinViewClose = document.getElementById('izinViewClose');
+const izinViewName = document.getElementById('izinViewName');
+const izinViewDate = document.getElementById('izinViewDate');
+const izinViewStatus = document.getElementById('izinViewStatus');
+const izinViewText = document.getElementById('izinViewText');
+const izinViewPhoto = document.getElementById('izinViewPhoto');
+
+async function openIzinViewModal(date, student) {
+  if (!canViewSiswaDetail()) return; // jaga-jaga, cuma admin & guru yang boleh buka
+  izinViewName.textContent = student.name;
+  izinViewDate.textContent = date;
+  izinViewStatus.style.display = 'block';
+  izinViewStatus.textContent = 'Memuat...';
+  izinViewText.style.display = 'none';
+  izinViewPhoto.style.display = 'none';
+  izinViewModal.classList.add('open');
+
+  try {
+    const snap = await izinDetailDocRef(date, student.name).get();
+    if (!snap.exists) {
+      izinViewStatus.textContent = 'Belum ada keterangan/foto tersimpan untuk izin ini (mungkin ditandai sebelum fitur ini ada).';
+      return;
+    }
+    const d = snap.data();
+    izinViewStatus.style.display = 'none';
+    izinViewText.textContent = d.text || '(tanpa keterangan)';
+    izinViewText.style.display = 'block';
+    if (d.photo) {
+      izinViewPhoto.src = d.photo;
+      izinViewPhoto.style.display = 'block';
+    }
+  } catch (e) {
+    console.error(e);
+    izinViewStatus.textContent = 'Gagal memuat detail izin. Cek koneksi internet.';
+  }
+}
+
+izinViewClose.addEventListener('click', () => izinViewModal.classList.remove('open'));
+izinViewModal.addEventListener('click', (e) => { if (e.target === izinViewModal) izinViewModal.classList.remove('open'); });
+
+// ================= FORM SAKIT (keterangan + foto) =================
+const sakitModal = document.getElementById('sakitModal');
+const sakitModalTitle = document.getElementById('sakitModalTitle');
+const sakitTextInput = document.getElementById('sakitTextInput');
+const sakitPhotoInput = document.getElementById('sakitPhotoInput');
+const sakitPhotoPreview = document.getElementById('sakitPhotoPreview');
+const sakitPhotoPreviewImg = document.getElementById('sakitPhotoPreviewImg');
+const sakitError = document.getElementById('sakitError');
+const sakitSubmitBtn = document.getElementById('sakitSubmit');
+const sakitCancelBtn = document.getElementById('sakitCancel');
+const sakitCloseBtn = document.getElementById('sakitClose');
+
+let sakitPendingCtx = null;
+let sakitPendingPhotoDataUrl = null;
+
+function resetSakitForm() {
+  sakitTextInput.value = '';
+  sakitPhotoInput.value = '';
+  sakitPhotoPreview.style.display = 'none';
+  sakitPhotoPreviewImg.src = '';
+  sakitError.textContent = '';
+  sakitPendingPhotoDataUrl = null;
+  sakitSubmitBtn.disabled = false;
+  sakitSubmitBtn.textContent = 'Kirim & Tandai Sakit';
+}
+
+function openSakitModal(ctx) {
+  resetSakitForm();
+  sakitPendingCtx = ctx;
+  sakitModalTitle.textContent = `Isi Keterangan Sakit — ${ctx.student.name}`;
+  sakitModal.classList.add('open');
+}
+
+function closeSakitModal() {
+  sakitModal.classList.remove('open');
+  if (sakitPendingCtx && sakitPendingCtx.btnGroup) {
+    sakitPendingCtx.btnGroup.forEach(b => { b.disabled = false; });
+  }
+  sakitPendingCtx = null;
+}
+
+sakitPhotoInput.addEventListener('change', async () => {
+  const file = sakitPhotoInput.files && sakitPhotoInput.files[0];
+  if (!file) return;
+  sakitError.textContent = '';
+  sakitPhotoPreview.style.display = 'none';
+  try {
+    // Pakai ulang fungsi compressImageFile yang sudah ada buat form Izin.
+    const dataUrl = await compressImageFile(file, 640, 0.55);
+    sakitPendingPhotoDataUrl = dataUrl;
+    sakitPhotoPreviewImg.src = dataUrl;
+    sakitPhotoPreview.style.display = 'block';
+  } catch (e) {
+    console.error(e);
+    sakitPendingPhotoDataUrl = null;
+    sakitError.textContent = 'Gagal memproses foto. Coba pilih foto lain.';
+  }
+});
+
+sakitSubmitBtn.addEventListener('click', async () => {
+  if (!sakitPendingCtx) return;
+  const text = sakitTextInput.value.trim();
+  if (!text) {
+    sakitError.textContent = 'Keterangan wajib diisi.';
+    return;
+  }
+  if (!sakitPendingPhotoDataUrl) {
+    sakitError.textContent = 'Foto bukti wajib dilampirkan.';
+    return;
+  }
+  sakitError.textContent = '';
+  sakitSubmitBtn.disabled = true;
+  sakitSubmitBtn.textContent = 'Mengirim...';
+
+  const { date, student } = sakitPendingCtx;
+  const session = currentSessionInfo();
+
+  try {
+    await sakitDetailDocRef(date, student.name).set({
+      text,
+      photo: sakitPendingPhotoDataUrl,
+      by: session.name || student.name,
+      at: Date.now()
+    });
+    await absenDocRef(date).set({ [student.name]: 'S' }, { merge: true });
+    writeNotifikasi('sakit', student.name, date);
+    flashSaved(date);
+    closeSakitModal();
+  } catch (e) {
+    console.error(e);
+    sakitError.textContent = 'Gagal menyimpan. Cek koneksi internet lalu coba lagi.';
+    sakitSubmitBtn.disabled = false;
+    sakitSubmitBtn.textContent = 'Kirim & Tandai Sakit';
+  }
+});
+
+sakitCancelBtn.addEventListener('click', closeSakitModal);
+sakitCloseBtn.addEventListener('click', closeSakitModal);
+sakitModal.addEventListener('click', (e) => { if (e.target === sakitModal) closeSakitModal(); });
+
+// ================= VIEWER DETAIL SAKIT (khusus admin) =================
+const sakitViewModal = document.getElementById('sakitViewModal');
+const sakitViewClose = document.getElementById('sakitViewClose');
+const sakitViewName = document.getElementById('sakitViewName');
+const sakitViewDate = document.getElementById('sakitViewDate');
+const sakitViewStatus = document.getElementById('sakitViewStatus');
+const sakitViewText = document.getElementById('sakitViewText');
+const sakitViewPhoto = document.getElementById('sakitViewPhoto');
+
+async function openSakitViewModal(date, student) {
+  if (!canViewSiswaDetail()) return;
+  sakitViewName.textContent = student.name;
+  sakitViewDate.textContent = date;
+  sakitViewStatus.style.display = 'block';
+  sakitViewStatus.textContent = 'Memuat...';
+  sakitViewText.style.display = 'none';
+  sakitViewPhoto.style.display = 'none';
+  sakitViewModal.classList.add('open');
+
+  try {
+    const snap = await sakitDetailDocRef(date, student.name).get();
+    if (!snap.exists) {
+      sakitViewStatus.textContent = 'Belum ada keterangan/foto tersimpan untuk sakit ini (mungkin ditandai sebelum fitur ini ada).';
+      return;
+    }
+    const d = snap.data();
+    sakitViewStatus.style.display = 'none';
+    sakitViewText.textContent = d.text || '(tanpa keterangan)';
+    sakitViewText.style.display = 'block';
+    if (d.photo) {
+      sakitViewPhoto.src = d.photo;
+      sakitViewPhoto.style.display = 'block';
+    }
+  } catch (e) {
+    console.error(e);
+    sakitViewStatus.textContent = 'Gagal memuat detail sakit. Cek koneksi internet.';
+  }
+}
+
+sakitViewClose.addEventListener('click', () => sakitViewModal.classList.remove('open'));
+sakitViewModal.addEventListener('click', (e) => { if (e.target === sakitViewModal) sakitViewModal.classList.remove('open'); });
+
+// ================= PANEL NOTIFIKASI IZIN/SAKIT TERBARU (admin & guru) =================
+const notifPanel = document.getElementById('notifPanel');
+const notifBadge = document.getElementById('notifBadge');
+const notifList = document.getElementById('notifList');
+const notifEmpty = document.getElementById('notifEmpty');
+
+const NOTIF_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000; // 3 hari
+
+function timeAgoLabel(ms) {
+  const diff = Date.now() - ms;
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return 'baru saja';
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? 'kemarin' : `${days} hari lalu`;
+}
+
+function renderNotifikasi(snap) {
+  notifList.innerHTML = '';
+  const docs = [];
+  snap.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+
+  notifBadge.textContent = docs.length;
+  if (docs.length === 0) {
+    notifEmpty.style.display = 'block';
+    return;
+  }
+  notifEmpty.style.display = 'none';
+
+  docs.forEach(d => {
+    const item = document.createElement('div');
+    item.className = `notif-item ${d.type === 'sakit' ? 'sakit' : 'izin'}`;
+    item.innerHTML = `
+      <span class="notif-icon">${d.type === 'sakit' ? '🩹' : '📄'}</span>
+      <div class="notif-body">
+        <div class="notif-name">${d.studentName || '-'} ${d.type === 'sakit' ? 'sakit' : 'izin'}</div>
+        <div class="notif-meta">${d.date || ''} · ${timeAgoLabel(d.createdAtMs || 0)}</div>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      const studentObj = { name: d.studentName };
+      if (d.type === 'sakit') openSakitViewModal(d.date, studentObj);
+      else openIzinViewModal(d.date, studentObj);
+    });
+    notifList.appendChild(item);
+  });
+}
+
+let unsubscribeNotif = null;
+let notifRefreshTimer = null;
+
+function listenNotifikasi() {
+  if (unsubscribeNotif) { unsubscribeNotif(); unsubscribeNotif = null; }
+  const cutoff = Date.now() - NOTIF_MAX_AGE_MS;
+  unsubscribeNotif = db.collection('notifikasi')
+    .where('createdAtMs', '>=', cutoff)
+    .orderBy('createdAtMs', 'desc')
+    .limit(30)
+    .onSnapshot(renderNotifikasi, err => console.error('notifikasi:', err));
+}
+
+function updateNotifPanelVisibility() {
+  const show = canViewSiswaDetail();
+  notifPanel.style.display = show ? 'block' : 'none';
+  if (show) {
+    listenNotifikasi();
+    // Refresh listener tiap 1 jam biar cutoff 3-hari-nya ikut geser
+    // (entri yang udah lewat 3 hari otomatis hilang dari daftar).
+    if (!notifRefreshTimer) {
+      notifRefreshTimer = setInterval(listenNotifikasi, 60 * 60 * 1000);
+    }
+  } else {
+    if (unsubscribeNotif) { unsubscribeNotif(); unsubscribeNotif = null; }
+    if (notifRefreshTimer) { clearInterval(notifRefreshTimer); notifRefreshTimer = null; }
+  }
 }
 
 const rekapBtn = document.getElementById('rekapBtn');
@@ -835,6 +1298,102 @@ agendaSubmit.addEventListener('click', async () => {
     alert('Gagal menambah agenda: ' + (e && e.message ? e.message : e));
   }
   agendaSubmit.disabled = false;
+});
+
+// ================= JURNAL MENGAJAR GURU =================
+const jurnalComposer = document.getElementById('jurnalComposer');
+const jurnalMapelInput = document.getElementById('jurnalMapelInput');
+const jurnalTanggalInput = document.getElementById('jurnalTanggalInput');
+const jurnalCatatanInput = document.getElementById('jurnalCatatanInput');
+const jurnalSubmit = document.getElementById('jurnalSubmit');
+const jurnalGuruNote = document.getElementById('jurnalGuruNote');
+const jurnalList = document.getElementById('jurnalList');
+const jurnalEmpty = document.getElementById('jurnalEmpty');
+const jurnalSubText = document.getElementById('jurnalSubText');
+
+function renderJurnalEntries(snap) {
+  jurnalList.innerHTML = '';
+  if (snap.empty) {
+    jurnalEmpty.style.display = 'block';
+    return;
+  }
+  jurnalEmpty.style.display = 'none';
+  const admin = isCurrentlyAdmin();
+  snap.forEach((doc, i) => {
+    const d = doc.data();
+    const dateParts = (d.tanggal || '').split('-');
+    const dayNum = dateParts[2] || '--';
+    const monLabel = dateParts[1] ? bulanSingkat[parseInt(dateParts[1], 10) - 1] : '';
+    const item = document.createElement('div');
+    item.className = 'agenda-item jurnal-item';
+    item.style.transitionDelay = Math.min(i * 40, 320) + 'ms';
+    item.innerHTML = `
+      <div class="agenda-date"><span class="ag-day">${dayNum}</span>${monLabel}</div>
+      <div class="agenda-body">
+        <h4></h4>
+        <span class="jurnal-guru-name"></span>
+        <p></p>
+      </div>
+      ${admin ? '<button class="agenda-del">Hapus</button>' : ''}
+    `;
+    item.querySelector('h4').textContent = d.mapel || '(tanpa mapel)';
+    item.querySelector('.jurnal-guru-name').textContent = 'Oleh: ' + (d.guruName || '-');
+    item.querySelector('p').textContent = d.catatan || '';
+    if (admin) {
+      item.querySelector('.agenda-del').addEventListener('click', async () => {
+        if (!confirm('Hapus entri jurnal ini?')) return;
+        try { await db.collection('jurnalMengajar').doc(doc.id).delete(); }
+        catch (e) { console.error(e); alert('Gagal menghapus jurnal: ' + (e && e.message ? e.message : e)); }
+      });
+    }
+    jurnalList.appendChild(item);
+  });
+  requestAnimationFrame(() => {
+    jurnalList.querySelectorAll('.jurnal-item').forEach(el => el.classList.add('in'));
+  });
+}
+
+let unsubscribeJurnal = null;
+function listenJurnal() {
+  if (unsubscribeJurnal) return;
+  unsubscribeJurnal = db.collection('jurnalMengajar').orderBy('tanggal', 'desc').limit(100)
+    .onSnapshot(renderJurnalEntries, err => console.error('jurnalMengajar:', err));
+}
+
+function updateJurnalComposerVisibility() {
+  const session = currentSessionInfo();
+  const show = canManageJurnal();
+  jurnalComposer.style.display = show ? 'flex' : 'none';
+  if (show) {
+    jurnalGuruNote.textContent = session.role === 'guru'
+      ? `Tersimpan atas nama: ${session.name}`
+      : 'Admin bisa menambah jurnal atas nama guru mana pun.';
+    if (!jurnalTanggalInput.value) jurnalTanggalInput.value = todayStr();
+  }
+}
+
+jurnalSubmit.addEventListener('click', async () => {
+  const session = currentSessionInfo();
+  if (!canManageJurnal()) return;
+  const mapel = jurnalMapelInput.value.trim();
+  const tanggal = jurnalTanggalInput.value || todayStr();
+  const catatan = jurnalCatatanInput.value.trim();
+  if (!mapel || !catatan) { alert('Mata pelajaran dan catatan wajib diisi.'); return; }
+  jurnalSubmit.disabled = true;
+  try {
+    await db.collection('jurnalMengajar').add({
+      guruName: session.name,
+      mapel, tanggal, catatan,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    jurnalMapelInput.value = '';
+    jurnalCatatanInput.value = '';
+    jurnalTanggalInput.value = todayStr();
+  } catch (e) {
+    console.error(e);
+    alert('Gagal menyimpan jurnal: ' + (e && e.message ? e.message : e));
+  }
+  jurnalSubmit.disabled = false;
 });
 
 const geoAdminBox = document.getElementById('geoAdminBox');
@@ -1292,6 +1851,9 @@ function onSessionActive() {
   listenJadwal();
   listenAgenda();
   listenGeofenceSettings();
+  listenJurnal();
+  updateJurnalComposerVisibility();
+  updateNotifPanelVisibility();
 }
 
 function onSessionEnded() {
@@ -1300,6 +1862,9 @@ function onSessionEnded() {
   if (unsubscribeJadwal) { unsubscribeJadwal(); unsubscribeJadwal = null; }
   if (unsubscribeAgenda) { unsubscribeAgenda(); unsubscribeAgenda = null; }
   if (unsubscribeGeofence) { unsubscribeGeofence(); unsubscribeGeofence = null; }
+  if (unsubscribeJurnal) { unsubscribeJurnal(); unsubscribeJurnal = null; }
+  if (unsubscribeNotif) { unsubscribeNotif(); unsubscribeNotif = null; }
+  if (notifRefreshTimer) { clearInterval(notifRefreshTimer); notifRefreshTimer = null; }
   stopGeoWatch(true);
 }
 
