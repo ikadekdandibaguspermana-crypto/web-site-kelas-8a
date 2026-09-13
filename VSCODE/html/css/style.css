@@ -31,19 +31,30 @@
     position:relative;
   }
 
-  /* ===== Layer background Bumi 3D (Three.js) =====
-     Diletakkan sebelum .starfield di HTML supaya urutan render:
-     warna dasar body -> bumi 3D -> starfield (bintang) -> glow-orb -> konten.
-     pointer-events:none supaya TIDAK PERNAH memblokir klik pada
-     navbar/tombol/link di manapun pada halaman. Drag untuk memutar
-     bumi ditangani lewat elemen #beranda (hero), bukan lewat layer ini. */
-  .earth-canvas-wrap{
+  .class-photo-bg{
     position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+    background-image:url('./asset/foto-kelas.jpg');
+    background-size:cover;
+    background-position:50% 50%;
+    background-repeat:no-repeat;
   }
-  .earth-canvas-wrap canvas{
-    display:block; width:100% !important; height:100% !important;
+  .class-photo-bg::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(10,13,26,0.78), rgba(10,13,26,0.55) 40%, rgba(10,13,26,0.85));
   }
-  body.light-mode .earth-canvas-wrap{ opacity:0.35; }
+  body.light-mode .class-photo-bg{ opacity:0.35; }
+
+  @media (max-width:860px){
+    .class-photo-bg{
+      background-size:auto 100%;
+      animation:panClassPhoto 22s ease-in-out infinite;
+    }
+    @keyframes panClassPhoto{
+      0%{ background-position:0% 50%; }
+      50%{ background-position:100% 50%; }
+      100%{ background-position:0% 50%; }
+    }
+  }
 
   .starfield{
     position:fixed; inset:0; z-index:0; pointer-events:none;
@@ -649,6 +660,7 @@
     *{ animation:none !important; transition:none !important; }
     html{ scroll-behavior:auto; }
     .load-in, .stagger-item, .reveal{ opacity:1 !important; transform:none !important; }
+    .class-photo-bg{ background-position:50% 50% !important; }
   }
 
   a:focus-visible, button:focus-visible{
@@ -866,7 +878,6 @@
     .geo-admin-field{ min-width:100px; }
   }
 
-  /* ===== Form Izin & Sakit (keterangan + foto) & Viewer khusus admin ===== */
   .izin-modal, .izin-view-modal, .sakit-modal, .sakit-view-modal{
     position:fixed; inset:0; z-index:220; background:rgba(6,8,16,0.92); backdrop-filter:blur(6px);
     display:none; align-items:center; justify-content:center; padding:24px;
@@ -938,10 +949,6 @@
     .izin-panel, .izin-view-panel, .sakit-panel, .sakit-view-panel{ padding:24px 20px; }
   }
 
-  /* ===== Halaman Gerbang (Gate Landing) — 4 pilihan akses + FAQ ===== */
-  /* Selama body punya class "gate-pending", sembunyikan seluruh web lama
-     (navbar utama, hero, semua section, footer, dan form login) supaya
-     yang tampil cuma halaman gerbang. */
   body.gate-pending > .nav-wrap#navWrap,
   body.gate-pending > .mobile-menu#mobileMenu,
   body.gate-pending > header.hero#beranda,

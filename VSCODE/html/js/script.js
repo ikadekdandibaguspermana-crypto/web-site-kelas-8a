@@ -29,7 +29,7 @@ const roster = [
   "Resta","Awan","Diah",
   "Gus Dwik","Cahya Aprianti",
   "April","Meisya","Rastia","Mang Cahya",
-  "Desita","Damay","Felii","Aldo"
+  "Desita","Damay","Feli","Aldo"
 ];
 
 const pengurus = [
@@ -71,13 +71,12 @@ function canManageInfo() {
   const r = currentSessionInfo().role;
   return r === 'admin' || r === 'pengurus';
 }
-// Guru (wali kelas) & admin sama-sama boleh lihat keterangan+foto Izin/Sakit murid,
-// tapi guru TIDAK boleh reset absensi, atur GPS, dsb (itu tetap admin-only).
+
 function canViewSiswaDetail() {
   const r = currentSessionInfo().role;
   return r === 'admin' || r === 'guru';
 }
-// Khusus guru & admin yang boleh isi/kelola Jurnal Mengajar.
+
 function canManageJurnal() {
   const r = currentSessionInfo().role;
   return r === 'admin' || r === 'guru';
@@ -458,9 +457,6 @@ function flashSaved(date) {
   flashTimer = setTimeout(() => absenNote.classList.remove('show'), 1600);
 }
 
-// Catat notifikasi ringan tiap kali ada Izin/Sakit baru, buat panel
-// notifikasi khusus admin & guru. Tidak menyimpan foto (biar ringan) --
-// foto/keterangan lengkapnya tetap di izinDetail/sakitDetail.
 function writeNotifikasi(type, studentName, date) {
   db.collection('notifikasi').add({
     type, studentName, date,
@@ -469,7 +465,6 @@ function writeNotifikasi(type, studentName, date) {
   }).catch(e => console.error('notifikasi:', e));
 }
 
-// ================= FORM IZIN (keterangan + foto) =================
 const izinModal = document.getElementById('izinModal');
 const izinModalTitle = document.getElementById('izinModalTitle');
 const izinTextInput = document.getElementById('izinTextInput');
@@ -481,7 +476,7 @@ const izinSubmitBtn = document.getElementById('izinSubmit');
 const izinCancelBtn = document.getElementById('izinCancel');
 const izinCloseBtn = document.getElementById('izinClose');
 
-let izinPendingCtx = null; // { date, student, btnGroup }
+let izinPendingCtx = null;
 let izinPendingPhotoDataUrl = null;
 
 function resetIzinForm() {
@@ -510,8 +505,6 @@ function closeIzinModal() {
   izinPendingCtx = null;
 }
 
-// Kompres foto di browser sebelum disimpan (biar ringan & aman di bawah limit
-// ukuran dokumen Firestore), lalu ubah jadi data URL base64.
 function compressImageFile(file, maxDim, quality) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type || file.type.indexOf('image/') !== 0) {
@@ -602,7 +595,6 @@ izinCancelBtn.addEventListener('click', closeIzinModal);
 izinCloseBtn.addEventListener('click', closeIzinModal);
 izinModal.addEventListener('click', (e) => { if (e.target === izinModal) closeIzinModal(); });
 
-// ================= VIEWER DETAIL IZIN (khusus admin) =================
 const izinViewModal = document.getElementById('izinViewModal');
 const izinViewClose = document.getElementById('izinViewClose');
 const izinViewName = document.getElementById('izinViewName');
@@ -612,7 +604,7 @@ const izinViewText = document.getElementById('izinViewText');
 const izinViewPhoto = document.getElementById('izinViewPhoto');
 
 async function openIzinViewModal(date, student) {
-  if (!canViewSiswaDetail()) return; // jaga-jaga, cuma admin & guru yang boleh buka
+  if (!canViewSiswaDetail()) return; 
   izinViewName.textContent = student.name;
   izinViewDate.textContent = date;
   izinViewStatus.style.display = 'block';
@@ -644,7 +636,6 @@ async function openIzinViewModal(date, student) {
 izinViewClose.addEventListener('click', () => izinViewModal.classList.remove('open'));
 izinViewModal.addEventListener('click', (e) => { if (e.target === izinViewModal) izinViewModal.classList.remove('open'); });
 
-// ================= FORM SAKIT (keterangan + foto) =================
 const sakitModal = document.getElementById('sakitModal');
 const sakitModalTitle = document.getElementById('sakitModalTitle');
 const sakitTextInput = document.getElementById('sakitTextInput');
@@ -691,7 +682,7 @@ sakitPhotoInput.addEventListener('change', async () => {
   sakitError.textContent = '';
   sakitPhotoPreview.style.display = 'none';
   try {
-    // Pakai ulang fungsi compressImageFile yang sudah ada buat form Izin.
+ 
     const dataUrl = await compressImageFile(file, 640, 0.55);
     sakitPendingPhotoDataUrl = dataUrl;
     sakitPhotoPreviewImg.src = dataUrl;
@@ -744,7 +735,6 @@ sakitCancelBtn.addEventListener('click', closeSakitModal);
 sakitCloseBtn.addEventListener('click', closeSakitModal);
 sakitModal.addEventListener('click', (e) => { if (e.target === sakitModal) closeSakitModal(); });
 
-// ================= VIEWER DETAIL SAKIT (khusus admin) =================
 const sakitViewModal = document.getElementById('sakitViewModal');
 const sakitViewClose = document.getElementById('sakitViewClose');
 const sakitViewName = document.getElementById('sakitViewName');
@@ -786,13 +776,12 @@ async function openSakitViewModal(date, student) {
 sakitViewClose.addEventListener('click', () => sakitViewModal.classList.remove('open'));
 sakitViewModal.addEventListener('click', (e) => { if (e.target === sakitViewModal) sakitViewModal.classList.remove('open'); });
 
-// ================= PANEL NOTIFIKASI IZIN/SAKIT TERBARU (admin & guru) =================
 const notifPanel = document.getElementById('notifPanel');
 const notifBadge = document.getElementById('notifBadge');
 const notifList = document.getElementById('notifList');
 const notifEmpty = document.getElementById('notifEmpty');
 
-const NOTIF_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000; // 3 hari
+const NOTIF_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000; 
 
 function timeAgoLabel(ms) {
   const diff = Date.now() - ms;
@@ -852,8 +841,6 @@ function updateNotifPanelVisibility() {
   notifPanel.style.display = show ? 'block' : 'none';
   if (show) {
     listenNotifikasi();
-    // Refresh listener tiap 1 jam biar cutoff 3-hari-nya ikut geser
-    // (entri yang udah lewat 3 hari otomatis hilang dari daftar).
     if (!notifRefreshTimer) {
       notifRefreshTimer = setInterval(listenNotifikasi, 60 * 60 * 1000);
     }
@@ -1300,7 +1287,6 @@ agendaSubmit.addEventListener('click', async () => {
   agendaSubmit.disabled = false;
 });
 
-// ================= JURNAL MENGAJAR GURU =================
 const jurnalComposer = document.getElementById('jurnalComposer');
 const jurnalMapelInput = document.getElementById('jurnalMapelInput');
 const jurnalTanggalInput = document.getElementById('jurnalTanggalInput');
@@ -1654,8 +1640,6 @@ function updateGeoPanels(date, session) {
   }
 }
 
-// Fitur radar butuh koleksi Firestore "liveLocation" -- kalau kosong terus,
-// cek Firestore Security Rules sudah izinkan koleksi ini.
 (function initGeoRadar() {
   let radarBtn = null;
   let radarModal = null;
