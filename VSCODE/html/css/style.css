@@ -46,13 +46,16 @@
 
   @media (max-width:860px){
     .class-photo-bg{
+      left:-15%;
+      right:-15%;
       background-size:auto 100%;
       animation:panClassPhoto 22s ease-in-out infinite;
+      will-change:transform;
     }
     @keyframes panClassPhoto{
-      0%{ background-position:0% 50%; }
-      50%{ background-position:100% 50%; }
-      100%{ background-position:0% 50%; }
+      0%{ transform:translateX(0); }
+      50%{ transform:translateX(-12%); }
+      100%{ transform:translateX(0); }
     }
   }
 
@@ -660,7 +663,7 @@
     *{ animation:none !important; transition:none !important; }
     html{ scroll-behavior:auto; }
     .load-in, .stagger-item, .reveal{ opacity:1 !important; transform:none !important; }
-    .class-photo-bg{ background-position:50% 50% !important; }
+    .class-photo-bg{ transform:none !important; }
   }
 
   a:focus-visible, button:focus-visible{

@@ -138,12 +138,20 @@ const navWrap = document.getElementById('navWrap');
 const orbOne = document.querySelector('.glow-orb.one');
 const orbTwo = document.querySelector('.glow-orb.two');
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-window.addEventListener('scroll', () => {
+let scrollTicking = false;
+function handleScrollFrame() {
   navWrap.classList.toggle('scrolled', window.scrollY > 40);
   if (!reduceMotion) {
     const y = window.scrollY;
     orbOne.style.transform = `translateY(${y * 0.12}px)`;
     orbTwo.style.transform = `translateY(${-y * 0.08}px)`;
+  }
+  scrollTicking = false;
+}
+window.addEventListener('scroll', () => {
+  if (!scrollTicking) {
+    scrollTicking = true;
+    requestAnimationFrame(handleScrollFrame);
   }
 }, { passive: true });
 
@@ -332,7 +340,6 @@ function paintAbsensi(date, session) {
   const isGuest = session.role === 'guest';
   const viewAll = isAdmin || isGuru || isGuest;
   const weekend = isWeekendDate(date);
-  // Guru cuma boleh LIHAT absensi murid (buat dokumentasi), bukan mengubahnya.
   const readOnly = weekend || isGuest || isGuru;
 
   const banner = ensureWeekendBanner();
@@ -402,8 +409,6 @@ function paintAbsensi(date, session) {
         const newValue = turningOn ? status : firebase.firestore.FieldValue.delete();
         const btnGroup = btn.closest('.absen-btns').querySelectorAll('.absen-btn');
 
-        // Khusus tombol "Izin"/"Sakit" yang baru DINYALAKAN: wajib isi keterangan + foto dulu
-        // lewat modal, sebelum status beneran disimpan ke Firestore.
         if (status === 'I' && turningOn) {
           openIzinModal({ date, student, btnGroup });
           return;
@@ -416,7 +421,6 @@ function paintAbsensi(date, session) {
         btnGroup.forEach(b => b.disabled = true);
         try {
           await absenDocRef(date).set({ [student.name]: newValue }, { merge: true });
-          // Kalau status Izin/Sakit dimatikan (toggle off), hapus juga detail keterangan+foto-nya.
           if (status === 'I' && !turningOn) {
             izinDetailDocRef(date, student.name).delete().catch(() => {});
           }
