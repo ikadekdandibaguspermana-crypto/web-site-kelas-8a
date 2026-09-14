@@ -315,6 +315,29 @@
   <p class="list-empty" id="agendaEmpty" style="display:none;">Belum ada agenda mendatang.</p>
 </section>
 
+<section class="section" id="jurnal">
+  <div class="section-head reveal">
+    <div class="eyebrow">Catatan Mengajar</div>
+    <h2>Jurnal Mengajar</h2>
+    <p id="jurnalSubText">Catatan kegiatan mengajar guru di kelas Aventra, tersinkron otomatis ke semua perangkat.</p>
+  </div>
+
+  <div class="composer-box reveal" id="jurnalComposer" style="display:none;">
+    <div class="composer-row">
+      <input type="text" id="jurnalMapelInput" placeholder="Mata pelajaran (contoh: Matematika)">
+      <input type="date" id="jurnalTanggalInput">
+    </div>
+    <textarea id="jurnalCatatanInput" placeholder="Catatan kegiatan mengajar hari ini..."></textarea>
+    <div class="composer-row" style="align-items:center;">
+      <button class="btn-add" id="jurnalSubmit">Simpan Jurnal</button>
+      <span class="admin-only-note" id="jurnalGuruNote"></span>
+    </div>
+  </div>
+
+  <div class="agenda-list stagger-container" id="jurnalList"></div>
+  <p class="list-empty" id="jurnalEmpty" style="display:none;">Belum ada catatan jurnal mengajar.</p>
+</section>
+
 <div class="lightbox" id="lightbox">
   <button class="lb-close" id="lbClose">✕</button>
   <div class="lb-box">
@@ -322,6 +345,76 @@
     <span id="lbLabel">FOTO-01.JPG</span>
   </div>
   <p class="lb-caption" id="lbCaption">Ganti elemen ini dengan foto kegiatan asli kelas kalian.</p>
+</div>
+
+<div class="izin-modal" id="izinModal">
+  <div class="izin-panel">
+    <button class="izin-close" id="izinClose">✕</button>
+    <h3 id="izinModalTitle">Isi Keterangan Izin</h3>
+    <p class="izin-sub">Tulis alasan izin dan lampirkan foto bukti (contoh: surat izin, pesan orang tua) sebelum status Izin tersimpan.</p>
+    <div class="izin-field">
+      <label for="izinTextInput">Keterangan</label>
+      <textarea id="izinTextInput" placeholder="Contoh: Izin acara keluarga di luar kota"></textarea>
+    </div>
+    <div class="izin-field">
+      <label for="izinPhotoInput">Foto Bukti</label>
+      <input type="file" id="izinPhotoInput" accept="image/*">
+      <div class="izin-photo-preview" id="izinPhotoPreview" style="display:none;">
+        <img id="izinPhotoPreviewImg" alt="Pratinjau foto bukti izin">
+      </div>
+    </div>
+    <p class="izin-error" id="izinError"></p>
+    <div class="izin-actions">
+      <button class="izin-cancel" id="izinCancel">Batal</button>
+      <button class="izin-submit" id="izinSubmit">Kirim & Tandai Izin</button>
+    </div>
+  </div>
+</div>
+
+<div class="izin-view-modal" id="izinViewModal">
+  <div class="izin-view-panel">
+    <button class="izin-close" id="izinViewClose">✕</button>
+    <h3>Detail Izin — <span id="izinViewName">-</span></h3>
+    <div class="izin-view-date" id="izinViewDate">-</div>
+    <p class="izin-view-status" id="izinViewStatus"></p>
+    <p class="izin-view-text" id="izinViewText" style="display:none;"></p>
+    <img class="izin-view-photo" id="izinViewPhoto" style="display:none;" alt="Foto bukti izin">
+  </div>
+</div>
+
+<div class="sakit-modal" id="sakitModal">
+  <div class="sakit-panel">
+    <button class="sakit-close" id="sakitClose">✕</button>
+    <h3 id="sakitModalTitle">Isi Keterangan Sakit</h3>
+    <p class="sakit-sub">Tulis keterangan sakit dan lampirkan foto bukti (contoh: surat dokter, pesan orang tua) sebelum status Sakit tersimpan.</p>
+    <div class="sakit-field">
+      <label for="sakitTextInput">Keterangan</label>
+      <textarea id="sakitTextInput" placeholder="Contoh: Demam, istirahat di rumah"></textarea>
+    </div>
+    <div class="sakit-field">
+      <label for="sakitPhotoInput">Foto Bukti</label>
+      <input type="file" id="sakitPhotoInput" accept="image/*">
+      <div class="sakit-photo-preview" id="sakitPhotoPreview" style="display:none;">
+        <img id="sakitPhotoPreviewImg" alt="Pratinjau foto bukti sakit">
+      </div>
+    </div>
+    <p class="sakit-error" id="sakitError"></p>
+    <div class="sakit-actions">
+      <button class="sakit-cancel" id="sakitCancel">Batal</button>
+      <button class="sakit-submit" id="sakitSubmit">Kirim & Tandai Sakit</button>
+    </div>
+  </div>
+</div>
+
+<div class="sakit-view-modal" id="sakitViewModal">
+  <div class="sakit-view-panel">
+    <button class="sakit-close" id="sakitViewClose">✕</button>
+    <h3>Detail Sakit — <span id="sakitViewName">-</span></h3>
+    <div class="sakit-view-date" id="sakitViewDate">-</div>
+    <p class="sakit-view-status" id="sakitViewStatus"></p>
+    <p class="sakit-view-text" id="sakitViewText" style="display:none;"></p>
+    <img class="sakit-view-photo" id="sakitViewPhoto" style="display:none;" alt="Foto bukti sakit">
+  </div>
 </div>
 
 <div class="rekap-modal" id="rekapModal">
