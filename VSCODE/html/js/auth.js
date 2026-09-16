@@ -2,18 +2,23 @@
   const loginGate = document.getElementById('loginGate');
   const loginFormStudent = document.getElementById('loginFormStudent');
   const loginFormAdmin = document.getElementById('loginFormAdmin');
+  const loginFormGuru = document.getElementById('loginFormGuru');
   const loginName = document.getElementById('loginName');
   const loginPin = document.getElementById('loginPin');
   const loginAdminPass = document.getElementById('loginAdminPass');
+  const loginGuruPass = document.getElementById('loginGuruPass');
   const loginSubmit = document.getElementById('loginSubmit');
   const loginError = document.getElementById('loginError');
   const loginToggle = document.getElementById('loginToggle');
+  const loginToggleGuru = document.getElementById('loginToggleGuru');
+  const loginTitle = document.getElementById('loginTitle');
+  const loginSub = document.getElementById('loginSub');
   const sessionBadge = document.getElementById('sessionBadge');
   const sessionName = document.getElementById('sessionName');
   const logoutBtn = document.getElementById('logoutBtn');
 
   const SESSION_KEY = 'aventra_session';
-  let isAdminMode = false;
+  let mode = 'student';
 
   const IS_LOCAL_DEV = ['localhost', '127.0.0.1', ''].includes(location.hostname);
 
@@ -53,26 +58,47 @@
     sessionBadge.style.display = 'none';
   }
 
+  function setMode(newMode) {
+    mode = newMode;
+    loginFormStudent.style.display = mode === 'student' ? '' : 'none';
+    loginFormAdmin.style.display = mode === 'admin' ? '' : 'none';
+    loginFormGuru.style.display = mode === 'guru' ? '' : 'none';
+    loginError.textContent = '';
+
+    if (mode === 'admin') {
+      loginTitle.textContent = 'Masuk sebagai Admin';
+      loginSub.textContent = 'Masukkan password admin.';
+    } else if (mode === 'guru') {
+      loginTitle.textContent = 'Masuk sebagai Guru';
+      loginSub.textContent = 'Masukkan password guru.';
+    } else {
+      loginTitle.textContent = 'Masuk ke Aventra Class';
+      loginSub.textContent = 'Masukkan nama dan PIN kamu persis seperti pada daftar absensi.';
+    }
+  }
+
   async function doLogin() {
     loginError.textContent = '';
     loginSubmit.disabled = true;
     loginSubmit.textContent = 'Memeriksa...';
-
-    const body = isAdminMode
-      ? { type: 'admin', password: loginAdminPass.value }
-      : { type: 'student', name: loginName.value, pin: loginPin.value };
 
     try {
       let data;
 
       if (IS_LOCAL_DEV) {
         await new Promise((r) => setTimeout(r, 250));
-        if (isAdminMode) {
+        if (mode === 'admin') {
           if (!loginAdminPass.value.trim()) {
             loginError.textContent = '[Mode lokal] Isi password apa saja untuk masuk sebagai Admin.';
             return;
           }
           data = { ok: true, token: 'local-dev-token', role: 'admin', name: 'Admin' };
+        } else if (mode === 'guru') {
+          if (!loginGuruPass.value.trim()) {
+            loginError.textContent = '[Mode lokal] Isi password apa saja untuk masuk sebagai Guru.';
+            return;
+          }
+          data = { ok: true, token: 'local-dev-token', role: 'guru', name: 'Guru' };
         } else {
           if (!loginName.value.trim() || !loginPin.value.trim()) {
             loginError.textContent = '[Mode lokal] Isi nama & PIN apa saja untuk masuk.';
@@ -80,14 +106,31 @@
           }
           data = { ok: true, token: 'local-dev-token', role: 'student', name: loginName.value.trim() };
         }
+      } else if (mode === 'guru') {
+        // Endpoint TERPISAH khusus guru -- tidak menyentuh function login lama.
+        const res = await fetch('/.netlify/functions/login-guru', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: loginGuruPass.value }),
+        });
+        data = await res.json();
+        if (!res.ok || !data.ok) {
+          loginError.textContent = data.error || 'Login gagal. Coba lagi.';
+          return;
+        }
       } else {
+
+        const body =
+          mode === 'admin'
+            ? { type: 'admin', password: loginAdminPass.value }
+            : { type: 'student', name: loginName.value, pin: loginPin.value };
+
         const res = await fetch('/.netlify/functions/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
         data = await res.json();
-
         if (!res.ok || !data.ok) {
           loginError.textContent = data.error || 'Login gagal. Coba lagi.';
           return;
@@ -107,18 +150,17 @@
 
   loginSubmit.addEventListener('click', doLogin);
 
-  [loginName, loginPin, loginAdminPass].forEach((el) => {
+  [loginName, loginPin, loginAdminPass, loginGuruPass].forEach((el) => {
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') doLogin();
     });
   });
 
   loginToggle.addEventListener('click', () => {
-    isAdminMode = !isAdminMode;
-    loginFormStudent.style.display = isAdminMode ? 'none' : '';
-    loginFormAdmin.style.display = isAdminMode ? '' : 'none';
-    loginToggle.textContent = isAdminMode ? 'Masuk sebagai Murid' : 'Masuk sebagai Admin';
-    loginError.textContent = '';
+    setMode(mode === 'admin' ? 'student' : 'admin');
+  });
+  loginToggleGuru.addEventListener('click', () => {
+    setMode(mode === 'guru' ? 'student' : 'guru');
   });
 
   logoutBtn.addEventListener('click', () => {
@@ -148,10 +190,10 @@
   setupGuestButton();
 
   if (IS_LOCAL_DEV) {
-    const titleEl = document.getElementById('loginTitle');
-    const subEl = document.getElementById('loginSub');
-    if (titleEl) titleEl.textContent = '⚠️ Mode Testing Lokal';
-    if (subEl) subEl.textContent = 'Nama/PIN/password BEBAS (tidak divalidasi ke server). Ini cuma buat lihat tampilan di Live Server.';
+    const noteEl = document.createElement('p');
+    noteEl.style.cssText = 'font-size:11px;color:#f2b705;text-align:center;margin-top:10px;';
+    noteEl.textContent = '⚠️ Mode Testing Lokal — nama/PIN/password BEBAS (tidak divalidasi ke server).';
+    document.querySelector('.login-box').appendChild(noteEl);
   }
 
   const existing = getSession();
@@ -165,5 +207,6 @@
     getSession,
     getToken: () => (getSession() || {}).token || null,
     getRole: () => (getSession() || {}).role || null,
+    setMode,
   };
 })();
