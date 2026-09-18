@@ -957,9 +957,8 @@
   body.gate-pending > header.hero#beranda,
   body.gate-pending > section.section,
   body.gate-pending > footer#footer,
-  body.gate-pending > .session-badge,
-  body.gate-pending #loginGate{
-    display:none !important;
+  body.gate-pending > .session-badge{
+      display:none !important;
   }
 
   .gate-landing{ position:relative; z-index:1; }
@@ -1040,3 +1039,101 @@
   .notif-item.izin .notif-icon{ color:#8ea1ff; }
   .notif-item.sakit .notif-icon{ color:var(--gold); }
   .notif-empty{ font-family:var(--font-mono); font-size:12px; color:var(--text-low); text-align:center; padding:8px 0; }
+
+.login-gate{
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+}
+@media (max-width:640px){
+    .login-gate{
+        align-items:flex-start;
+        padding-top:50px;
+        padding-bottom:50px;
+    }
+}
+.gate-landing{
+    width:min(760px,100%);
+    text-align:center;
+}
+.gate-landing .login-patch{ margin:0 auto 18px; }
+.gate-landing h2{
+    font-family:var(--font-display); font-size:26px; margin-bottom:8px; color:var(--text-hi);
+}
+.gate-landing p.sub{ color:var(--text-mid); font-size:13.5px; margin-bottom:32px; }
+
+.gate-card-grid.cols-3{ grid-template-columns:repeat(3,1fr); }
+@media (max-width:720px){ .gate-card-grid.cols-3{ grid-template-columns:1fr; } }
+.gate-card-icon svg{ width:28px; height:28px; }
+
+.login-tabs{
+    display:flex; gap:6px; background:var(--bg-void); border:1px solid var(--line-soft);
+    border-radius:999px; padding:4px; margin-bottom:22px;
+}
+.login-tab{
+    flex:1; background:none; border:none; border-radius:999px; padding:9px 0;
+    font-family:var(--font-mono); font-size:11.5px; color:var(--text-low); cursor:pointer;
+    transition:all 0.2s ease;
+}
+.login-tab.active{ background:var(--gold); color:var(--bg-void); font-weight:600; }
+.login-tab:hover:not(.active){ color:var(--text-hi); }
+
+.gate-back-btn{
+    display:block; margin:0 0 14px; background:none; border:none; color:var(--text-low);
+    font-family:var(--font-mono); font-size:11.5px; cursor:pointer; padding:0;
+}
+.gate-back-btn:hover{ color:var(--gold); }
+
+.page-back-btn{
+    position:fixed; top:22px; left:22px; z-index:100;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(15,19,35,0.92); border:1px solid var(--line-soft); border-radius:999px;
+    padding:10px 18px; color:var(--text-hi); text-decoration:none;
+    font-family:var(--font-mono); font-size:12px; backdrop-filter:blur(20px);
+    transition:border-color 0.25s ease;
+}
+.page-back-btn:hover{ border-color:var(--gold); }
+
+.profile-hero{
+    display:flex; align-items:center; gap:44px; flex-wrap:wrap;
+}
+.profile-photo-frame{
+    width:220px; height:220px; border-radius:var(--radius-lg); overflow:hidden; flex-shrink:0;
+    border:1px solid var(--line-soft); position:relative;
+    background:linear-gradient(160deg, var(--bg-panel-hi), var(--bg-panel));
+}
+.profile-photo{ width:100%; height:100%; object-fit:cover; display:block; }
+.profile-photo-fallback{
+    position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    text-align:center; padding:16px;
+}
+.profile-photo-fallback svg{ width:38px; height:38px; opacity:0.5; }
+.profile-photo-fallback span{
+    font-family:var(--font-mono); font-size:10px; color:var(--text-low); line-height:1.5;
+}
+.profile-hero-text{ flex:1; min-width:260px; }
+.profile-hero-text h1{
+    font-family:var(--font-display); font-weight:700; font-size:clamp(28px,4vw,40px);
+    color:var(--text-hi); margin:8px 0 6px; letter-spacing:-0.5px;
+}
+.profile-nickname{ color:var(--teal); font-size:13.5px; margin-bottom:16px; }
+.profile-nickname strong{ color:var(--gold-soft); }
+.profile-bio{ color:var(--text-mid); font-size:14.5px; line-height:1.7; max-width:560px; }
+
+.profile-info-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:26px;
+}
+@media (max-width:820px){ .profile-info-grid{ grid-template-columns:1fr; } }
+.profile-info-card{
+    background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:var(--radius-md);
+    padding:22px;
+}
+.profile-info-card h4{
+    font-family:var(--font-display); font-size:16px; color:var(--gold-soft); margin-bottom:8px;
+}
+.profile-info-card p{ color:var(--text-mid); font-size:13px; line-height:1.6; }
+
+@media (max-width:640px){
+    .profile-hero{ flex-direction:column; text-align:center; gap:26px; }
+    .profile-photo-frame{ width:170px; height:170px; margin:0 auto; }
+    .profile-bio{ max-width:100%; }
+}

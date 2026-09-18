@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
+<link rel="icon" type="image/png" href="asset/logo-aventra-120.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -21,10 +22,46 @@
 <div class="glow-orb two"></div>
 
 <div class="login-gate" id="loginGate">
-  <div class="login-box">
+  <div class="gate-landing" id="gateLanding">
     <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="login-patch">
+    <h2>Aventra Class</h2>
+    <p class="sub">Pilih menu di bawah untuk melanjutkan.</p>
+    <div class="gate-card-grid cols-3">
+      <div class="gate-card" id="gateCardMasuk">
+        <div class="gate-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f2b705" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+        </div>
+        <h3>Masuk</h3>
+        <p>Login untuk akses absensi, pengumuman, jadwal, dan fitur kelas lainnya.</p>
+      </div>
+      <div class="gate-card" id="gateCardFaq">
+        <div class="gate-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2fd4c4" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .5c0 1.5-2 1.7-2.4 3.2M12 17h.01"/></svg>
+        </div>
+        <h3>FAQ</h3>
+        <p>Pertanyaan yang sering ditanyakan seputar cara pakai website ini.</p>
+      </div>
+      <div class="gate-card" id="gateCardPortofolio">
+        <div class="gate-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f2b705" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-4-4 3-3-2-6 5"/></svg>
+        </div>
+        <h3>Portofolio</h3>
+        <p>Profil, struktur, dan dokumentasi kegiatan kelas Aventra.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-box" id="loginBox" style="display:none;">
+    <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="login-patch">
+    <button type="button" class="gate-back-btn" id="gateBackBtn">← Kembali ke Menu</button>
     <h2 id="loginTitle">Masuk ke Aventra Class</h2>
     <p class="sub" id="loginSub">Masukkan nama dan PIN kamu persis seperti pada daftar absensi.</p>
+
+    <div class="login-tabs">
+      <button type="button" class="login-tab active" data-mode="student">Murid</button>
+      <button type="button" class="login-tab" data-mode="admin">Admin</button>
+      <button type="button" class="login-tab" data-mode="guru">Guru</button>
+    </div>
 
     <div id="loginFormStudent">
       <div class="login-field">
@@ -48,17 +85,13 @@
       <div class="login-field">
         <label for="loginGuruPass">Password Guru</label>
         <input type="password" id="loginGuruPass" autocomplete="off" placeholder="••••••••">
-      </div>  
+      </div>
     </div>
 
     <button class="login-submit" id="loginSubmit">Masuk</button>
     <p class="login-error" id="loginError"></p>
-    <button class="login-toggle" id="loginToggle">Masuk sebagai Admin</button>
-    <button class="login-toggle" id="loginToggleGuru">Masuk sebagai Guru</button>
   </div>
 </div>
-
-
 
 <div class="session-badge" id="sessionBadge" style="display:none;">
   <span>Masuk sebagai <b id="sessionName">-</b></span>

@@ -1,5 +1,12 @@
 (function () {
   const loginGate = document.getElementById('loginGate');
+  const gateLanding = document.getElementById('gateLanding');
+  const loginBox = document.getElementById('loginBox');
+  const gateCardMasuk = document.getElementById('gateCardMasuk');
+  const gateCardFaq = document.getElementById('gateCardFaq');
+  const gateCardPortofolio = document.getElementById('gateCardPortofolio');
+  const gateBackBtn = document.getElementById('gateBackBtn');
+  const loginTabs = document.querySelectorAll('.login-tab');
   const loginFormStudent = document.getElementById('loginFormStudent');
   const loginFormAdmin = document.getElementById('loginFormAdmin');
   const loginFormGuru = document.getElementById('loginFormGuru');
@@ -9,8 +16,6 @@
   const loginGuruPass = document.getElementById('loginGuruPass');
   const loginSubmit = document.getElementById('loginSubmit');
   const loginError = document.getElementById('loginError');
-  const loginToggle = document.getElementById('loginToggle');
-  const loginToggleGuru = document.getElementById('loginToggleGuru');
   const loginTitle = document.getElementById('loginTitle');
   const loginSub = document.getElementById('loginSub');
   const sessionBadge = document.getElementById('sessionBadge');
@@ -47,15 +52,29 @@
   }
 
   function showApp(session) {
+    document.body.classList.remove('gate-pending');
     loginGate.style.display = 'none';
     sessionBadge.style.display = '';
     sessionName.textContent = session.name;
     document.dispatchEvent(new CustomEvent('aventra:login', { detail: session }));
   }
 
+  function showLanding() {
+    gateLanding.style.display = '';
+    loginBox.style.display = 'none';
+  }
+
+  function showLoginBox() {
+    gateLanding.style.display = 'none';
+    loginBox.style.display = '';
+    setMode('student');
+  }
+
   function showLoginGate() {
+    document.body.classList.add('gate-pending');
     loginGate.style.display = '';
     sessionBadge.style.display = 'none';
+    showLanding();
   }
 
   function setMode(newMode) {
@@ -64,6 +83,10 @@
     loginFormAdmin.style.display = mode === 'admin' ? '' : 'none';
     loginFormGuru.style.display = mode === 'guru' ? '' : 'none';
     loginError.textContent = '';
+
+    loginTabs.forEach((tab) => {
+      tab.classList.toggle('active', tab.getAttribute('data-mode') === mode);
+    });
 
     if (mode === 'admin') {
       loginTitle.textContent = 'Masuk sebagai Admin';
@@ -107,7 +130,6 @@
           data = { ok: true, token: 'local-dev-token', role: 'student', name: loginName.value.trim() };
         }
       } else if (mode === 'guru') {
-        // Endpoint TERPISAH khusus guru -- tidak menyentuh function login lama.
         const res = await fetch('/.netlify/functions/login-guru', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -119,7 +141,6 @@
           return;
         }
       } else {
-
         const body =
           mode === 'admin'
             ? { type: 'admin', password: loginAdminPass.value }
@@ -156,12 +177,14 @@
     });
   });
 
-  loginToggle.addEventListener('click', () => {
-    setMode(mode === 'admin' ? 'student' : 'admin');
+  loginTabs.forEach((tab) => {
+    tab.addEventListener('click', () => setMode(tab.getAttribute('data-mode')));
   });
-  loginToggleGuru.addEventListener('click', () => {
-    setMode(mode === 'guru' ? 'student' : 'guru');
-  });
+
+  gateCardMasuk.addEventListener('click', showLoginBox);
+  gateCardFaq.addEventListener('click', () => { location.href = 'faq.html'; });
+  gateCardPortofolio.addEventListener('click', () => { location.href = 'portofolio.html'; });
+  gateBackBtn.addEventListener('click', showLanding);
 
   logoutBtn.addEventListener('click', () => {
     clearSession();
@@ -176,8 +199,7 @@
   }
 
   function setupGuestButton() {
-    const loginBoxEl = document.querySelector('.login-box');
-    if (!loginBoxEl || document.getElementById('loginGuestBtn')) return;
+    if (document.getElementById('loginGuestBtn')) return;
     const guestBtn = document.createElement('button');
     guestBtn.type = 'button';
     guestBtn.id = 'loginGuestBtn';
@@ -185,15 +207,15 @@
     guestBtn.style.marginTop = '8px';
     guestBtn.textContent = 'Masuk sebagai Tamu (tanpa login)';
     guestBtn.addEventListener('click', doLoginGuest);
-    loginBoxEl.appendChild(guestBtn);
+    loginBox.appendChild(guestBtn);
   }
   setupGuestButton();
 
   if (IS_LOCAL_DEV) {
     const noteEl = document.createElement('p');
     noteEl.style.cssText = 'font-size:11px;color:#f2b705;text-align:center;margin-top:10px;';
-    noteEl.textContent = '⚠️ Mode Testing Lokal — nama/PIN/password BEBAS (tidak divalidasi ke server).';
-    document.querySelector('.login-box').appendChild(noteEl);
+    noteEl.textContent = 'Mode Testing Lokal — nama/PIN/password bebas, tidak divalidasi ke server.';
+    loginBox.appendChild(noteEl);
   }
 
   const existing = getSession();
