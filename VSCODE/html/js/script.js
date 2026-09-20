@@ -168,11 +168,22 @@ mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => 
 
 const spotlight = document.getElementById('spotlight');
 const heroEl = document.getElementById('beranda');
-if (!reduceMotion && spotlight) {
+if (!reduceMotion && spotlight && heroEl) {
+  let spotlightTicking = false;
+  let spotlightX = 0;
+  let spotlightY = 0;
   heroEl.addEventListener('mousemove', (e) => {
-    const r = heroEl.getBoundingClientRect();
-    spotlight.style.setProperty('--sx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-    spotlight.style.setProperty('--sy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    spotlightX = e.clientX;
+    spotlightY = e.clientY;
+    if (!spotlightTicking) {
+      spotlightTicking = true;
+      requestAnimationFrame(() => {
+        const r = heroEl.getBoundingClientRect();
+        spotlight.style.setProperty('--sx', ((spotlightX - r.left) / r.width * 100).toFixed(1) + '%');
+        spotlight.style.setProperty('--sy', ((spotlightY - r.top) / r.height * 100).toFixed(1) + '%');
+        spotlightTicking = false;
+      });
+    }
   });
 }
 
@@ -194,13 +205,29 @@ document.querySelectorAll('.stat-chip b[data-count]').forEach(b => {
 
 if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
   document.querySelectorAll('.tilt').forEach(el => {
+    let tiltRafId = null;
+    let tiltX = 0;
+    let tiltY = 0;
     el.addEventListener('mousemove', (e) => {
-      const r = el.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      el.style.transform = `perspective(700px) rotateX(${(-y * 6).toFixed(2)}deg) rotateY(${(x * 6).toFixed(2)}deg) translateY(-3px)`;
+      tiltX = e.clientX;
+      tiltY = e.clientY;
+      if (tiltRafId === null) {
+        tiltRafId = requestAnimationFrame(() => {
+          tiltRafId = null;
+          const r = el.getBoundingClientRect();
+          const x = (tiltX - r.left) / r.width - 0.5;
+          const y = (tiltY - r.top) / r.height - 0.5;
+          el.style.transform = `perspective(700px) rotateX(${(-y * 6).toFixed(2)}deg) rotateY(${(x * 6).toFixed(2)}deg) translateY(-3px)`;
+        });
+      }
     });
-    el.addEventListener('mouseleave', () => { el.style.transform = ''; });
+    el.addEventListener('mouseleave', () => {
+      if (tiltRafId !== null) {
+        cancelAnimationFrame(tiltRafId);
+        tiltRafId = null;
+      }
+      el.style.transform = '';
+    });
   });
 }
 
@@ -841,6 +868,7 @@ function listenNotifikasi() {
 }
 
 function updateNotifPanelVisibility() {
+  if (!notifPanel) return;
   const show = canViewSiswaDetail();
   notifPanel.style.display = show ? 'block' : 'none';
   if (show) {
