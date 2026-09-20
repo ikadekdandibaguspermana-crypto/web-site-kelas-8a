@@ -1,8 +1,5 @@
-# netlify.toml
-# File konfigurasi Netlify. Aman untuk di-push ke GitHub, tidak berisi rahasia.
-# "command" = perintah yang dijalankan Netlify sebelum web di-online-kan.
-# "publish" = folder yang isinya di-upload jadi website (root repo ini).
-
 [build]
-  command = "node build-config.js"
-  publish = "."
+  publish = "VSCODE/html"
+
+[functions]
+  directory = "VSCODE/html/netlify/functions"
