@@ -1,0 +1,4 @@
+# File ini menyimpan password admin & PIN murid — jangan diupload ke GitHub.
+# Ingat: ini cuma menyembunyikannya dari repo publik, BUKAN dari Inspect/DevTools
+# browser, karena file ini tetap harus diunduh browser agar login berfungsi.
+js/config.js
