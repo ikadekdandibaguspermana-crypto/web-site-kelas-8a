@@ -1,0 +1,6 @@
+VSCODE/node_modules/
+VSCODE/.netlify/
+.idea/
+.vscode/
+.env
+.env.*

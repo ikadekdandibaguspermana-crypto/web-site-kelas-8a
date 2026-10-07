@@ -1,5 +1,6 @@
 [build]
-  publish = "VSCODE/html"
+  base = "VSCODE"
+  publish = "html"
 
 [functions]
-  directory = "VSCODE/html/netlify/functions"
+  directory = "html/netlify/functions"

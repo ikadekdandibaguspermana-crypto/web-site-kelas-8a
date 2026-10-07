@@ -1,0 +1,22 @@
+{
+  "name": "Aventra Class",
+  "short_name": "Aventra",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0d1a",
+  "theme_color": "#0a0d1a",
+  "icons": [
+    {
+      "src": "asset/logo-aventra-120.png",
+      "sizes": "120x120",
+      "type": "image/png"
+    },
+    {
+      "src": "asset/logo-aventra-400.png",
+      "sizes": "400x400",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

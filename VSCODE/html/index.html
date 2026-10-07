@@ -1,18 +1,27 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
-<link rel="icon" type="image/png" href="asset/logo-aventra-120.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVENTRA CLASS — Menjelajah Bersama, Tumbuh Bersama</title>
+  <link rel="icon" type="image/png" href="asset/logo-aventra-120.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0d1a">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Aventra Class">
+  <link rel="apple-touch-icon" href="asset/logo-aventra-400.png">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -50,6 +59,124 @@
       </div>
     </div>
   </div>
+
+  <section id="classSelection" class="class-selection">
+    <div class="selection-header">
+      <span class="selection-label">AVENTRA CLASS</span>
+
+      <h1>
+        Pilih Kelas
+      </h1>
+
+      <p>
+        Pilih tingkat dan kelasmu untuk melanjutkan ke dashboard Aventra.
+      </p>
+    </div>
+    <div class="grade-section">
+      <h2>Tingkat</h2>
+
+      <div class="grade-list">
+
+        <button
+          type="button"
+          class="grade-card"
+          data-grade="7">
+          <span class="grade-number">07</span>
+          <span class="grade-name">Kelas 7</span>
+          <span class="grade-description">Tingkat VII</span>
+        </button>
+
+        <button 
+          type="button"
+          class="grade-card"
+          data-grade="8">
+          <span class="grade-number">08</span>
+          <span class="grade-name">Kelas 8</span>
+          <span class="grade-description">Tingkat VIII</span>
+        </button>
+
+        <button 
+          type="button"
+          class="grade-card"
+          data-grade="9">
+          <span class="grade-number">09</span>
+          <span class="grade-name">Kelas 9</span>
+          <span class="grade-description">Tingkat IX</span>
+        </button>
+      </div>
+    </div>
+    <div 
+       id="classListSection"
+       class="class-list-section"
+       hidden>
+
+       <div class="class-list-header">
+        <div>
+          <span class="selection-label">CLASS</span>
+
+          <h2>
+            Pilih Kelas
+          </h2>
+
+        </div>
+        <span
+          id="selectionGradeLabel"
+          class="selected-grade">
+          Kelas 8
+        </span>
+
+       </div>
+       <div
+          id="classList"
+          class="class-list">
+          
+          <button
+            type="button"
+            class="class-card"
+            data-class="A">
+
+            <span class="class-letter">A</span>
+            <span class="class-info">
+              <strong>Kelas 8A</strong>
+              <small>Masuk dashboard</small>
+            </span>
+            <span class="class-arrow">→</span>
+          </button>
+          <button
+            type="button"
+            class="class-card"
+            data-class="B">
+            <span class="class-letter">B</span>
+            <span class="class-info">
+              <strong>Kelas 8B</strong>
+              <small>Masuk dashboard</small>
+            </span>
+            <span class="class-arrow">→</span>
+          </button>
+          <button 
+            type="button"
+            class="class-card"
+            data-class="C">
+            <span class="class-letter">C</span>
+            <span class="class-info">
+              <strong>Kelas 8C</strong>
+              <small>Masuk dashboard</small>
+            </span>
+            <span class="class-arrow">→</span>
+          </button>
+        </div>
+        <div 
+          id="selectedClassInfo"
+          class="selected-class-info"
+          hidden>
+          <span class="selection-label">
+            SELECTED CLASS
+          </span>
+          <strong id="selectedClassName">
+            Kelas 8A
+          </strong>
+        </div>
+  </section>
 
   <div class="login-box" id="loginBox" style="display:none;">
     <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="login-patch">
@@ -189,7 +316,7 @@
     <div class="officer-card tilt stagger-item">
       <div class="avatar-ring">LP</div>
       <div class="role-tag">Sekretaris 1</div>
-      <h4>Ni Luh Putu Laksmi Pradnyaswari</h4>
+      <h4>Luh Putu Laksmi Pradnyaswari</h4>
     </div>
     <div class="officer-card tilt stagger-item">
       <div class="avatar-ring">BP</div>
@@ -239,7 +366,9 @@
 
   <div class="geo-admin-box reveal" id="geoAdminBox" style="display:none;">
     <h4>📍 Pengaturan Lokasi Sekolah (Absen Otomatis GPS)</h4>
-    <p>Berdiri di area sekolah, lalu klik tombol di bawah untuk menyimpan titik lokasinya. Siswa yang berada dalam radius ini selama waktu yang ditentukan akan otomatis tercatat Hadir.</p>
+    <p>Cari alamat, klik di peta, atau drag marker untuk menentukan titik sekolah. Siswa yang berada dalam radius ini selama waktu yang ditentukan akan otomatis tercatat Hadir.</p>
+    <input type="text" id="geoMapSearch" placeholder="Cari alamat sekolah..." class="absen-date" style="width:100%;margin-bottom:8px;">
+    <div id="geoMapContainer" style="height:280px;border-radius:12px;margin-bottom:12px;overflow:hidden;"></div>
     <div class="geo-admin-row">
       <div class="geo-admin-field">
         <label>Latitude</label>
@@ -478,9 +607,9 @@
       <div class="rekap-table-wrap" id="rekapTableWrap" style="display:none;">
         <table class="rekap-table">
           <thead>
-            <tr>
-              <th>No</th><th>Nama</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Belum Tercatat</th><th>% Hadir</th>
-            </tr>
+          <tr>
+            <th>No</th><th>Nama</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Belum Tercatat</th><th>% Hadir</th>
+          </tr>
           </thead>
           <tbody id="rekapTbody"></tbody>
         </table>
@@ -493,6 +622,7 @@
   </div>
 </div>
 
+
 <footer id="footer">
   <img src="asset/logo-aventra-120.png" alt="Logo Aventra" class="patch">
   <h4>AVENTRA CLASS</h4>
@@ -502,5 +632,13 @@
 <!-- auth.js menangani login lewat server (Netlify Function), aman dilihat publik. -->
 <script src="js/auth.js" defer></script>
 <script src="js/script.js" defer></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .catch(err => console.error('SW register gagal:', err));
+    });
+  }
+</script>
 </body>
 </html>

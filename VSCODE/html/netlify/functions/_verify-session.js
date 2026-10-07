@@ -1,44 +1,90 @@
-// netlify/functions/_verify-session.js
-//
-// Modul bantu (bukan endpoint sendiri) untuk dipakai oleh Netlify
-// Function lain yang perlu memastikan request datang dari admin yang
-// sudah login sah — misalnya function untuk memposting pengumuman atau
-// menghapus data. Cukup import fungsi verifySession di function lain.
-//
-// Contoh pakai di function lain:
-//   const { verifySession } = require('./_verify-session');
-//   const session = verifySession(event.headers.authorization);
-//   if (!session || session.role !== 'admin') {
-//     return { statusCode: 403, body: JSON.stringify({ ok:false, error:'Tidak diizinkan' }) };
-//   }
-
 const crypto = require('crypto');
 
 function verifySession(authorizationHeader) {
-  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) return null;
+  if (
+    !authorizationHeader ||
+    !authorizationHeader.startsWith('Bearer ')
+  ) {
+    return null;
+  }
+
   const token = authorizationHeader.slice(7);
 
   try {
-    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const decoded =
+      Buffer.from(token, 'base64').toString('utf8');
+
     const parts = decoded.split('|');
-    if (parts.length !== 4) return null;
-    const [name, role, expiry, sig] = parts;
 
-    const SESSION_SECRET = process.env.SESSION_SECRET || '';
-    const raw = `${name}|${role}|${expiry}`;
-    const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(raw).digest('hex');
+    if (parts.length !== 5) {
+      return null;
+    }
 
-    // Perbandingan aman terhadap timing attack
-    const sigBuf = Buffer.from(sig);
-    const expBuf = Buffer.from(expectedSig);
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const [
+      name,
+      role,
+      classId,
+      expiry,
+      sig
+    ] = parts;
 
-    if (Date.now() > Number(expiry)) return null; // token kedaluwarsa
+    const SESSION_SECRET =
+      process.env.SESSION_SECRET || '';
 
-    return { name, role };
+    if (!SESSION_SECRET) {
+      return null;
+    }
+
+    const raw =
+      `${name}|${role}|${classId}|${expiry}`;
+
+    const expectedSig =
+      crypto
+        .createHmac(
+          'sha256',
+          SESSION_SECRET
+        )
+        .update(raw)
+        .digest('hex');
+
+    const sigBuf =
+      Buffer.from(sig);
+
+    const expectedSigBuf =
+      Buffer.from(expectedSig);
+
+    if (
+      sigBuf.length !==
+      expectedSigBuf.length ||
+      !crypto.timingSafeEqual(
+        sigBuf,
+        expectedSigBuf
+      )
+    ) {
+      return null;
+    }
+
+    const expiryNumber =
+      Number(expiry);
+
+    if (
+      !Number.isFinite(expiryNumber) ||
+      Date.now() > expiryNumber
+    ) {
+      return null;
+    }
+
+    return {
+      name,
+      role,
+      classId: classId || null
+    };
+
   } catch {
     return null;
   }
 }
 
-module.exports = { verifySession };
+module.exports = {
+  verifySession
+};
