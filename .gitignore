@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 VSCODE/node_modules/
 VSCODE/.netlify/
 .idea/
 .vscode/
 .env
 .env.*
+=======
+# Local Netlify folder
+.netlify
+>>>>>>> origin/main
