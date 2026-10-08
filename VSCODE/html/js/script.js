@@ -2224,11 +2224,6 @@ const rekapDownloadPdfBtn =
     'rekapDownloadPdf'
   );
 
-const absenResetBtn =
-  document.getElementById(
-    'absenReset'
-  );  
-
 let rekapCurrentData = null;
 
 function daysInMonth(y, m) {
@@ -2935,6 +2930,39 @@ themeToggleBtn.addEventListener(
 
 const geoAdminStatus =
   document.getElementById('geoAdminStatus');
+
+const geoUseLocationBtn =
+  document.getElementById('geoUseLocation');
+
+const geoSaveSettingsBtn =
+  document.getElementById('geoSaveSettings');
+
+const geoLatInput =
+  document.getElementById('geoLat');
+
+const geoLngInput =
+  document.getElementById('geoLng');
+
+const geoRadiusInput =
+  document.getElementById('geoRadius');
+
+const geoMinutesInput =
+  document.getElementById('geoMinutes');
+
+const geoAdminBox =
+  document.getElementById('geoAdminBox');
+
+const geoStudentBox =
+  document.getElementById('geoStudentBox');
+
+const geoActivateBtn =
+  document.getElementById('geoActivateBtn');
+
+const geoStopBtn =
+  document.getElementById('geoStopBtn');
+
+const geoStatusLine =
+  document.getElementById('geoStatusLine');
 
 geoUseLocationBtn.addEventListener('click', () => {
   if (!navigator.geolocation) {
