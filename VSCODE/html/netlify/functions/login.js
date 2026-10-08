@@ -1,7 +1,16 @@
 const crypto = require('crypto');
-const admin = require('firebase-admin');
 
-if (!admin.apps.length) {
+const {
+  initializeApp,
+  getApps,
+  cert
+} = require('firebase-admin/app');
+
+const {
+  getFirestore
+} = require('firebase-admin/firestore');
+
+if (!getApps().length) {
   let serviceAccount;
 
   try {
@@ -13,18 +22,18 @@ if (!admin.apps.length) {
   }
 
   if (serviceAccount) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+    initializeApp({
+      credential: cert(serviceAccount)
     });
   }
 }
 
 function getDb() {
-  if (!admin.apps.length) {
+  if (!getApps().length) {
     return null;
   }
 
-  return admin.firestore();
+  return getFirestore();
 }
 
 exports.handler = async (event) => {
