@@ -2224,6 +2224,11 @@ const rekapDownloadPdfBtn =
     'rekapDownloadPdf'
   );
 
+const absenResetBtn =
+  document.getElementById(
+    'absenReset'
+  );  
+
 let rekapCurrentData = null;
 
 function daysInMonth(y, m) {
