@@ -1,6 +1,34 @@
+
 const crypto = require('crypto');
 const admin = require('firebase-admin');
 
+// Origin yang diizinkan.
+const allowedOrigins = [
+  'http://localhost:5500',
+  'https://aventra-x-2026-web-bydandi.netlify.app'
+];
+
+function getCorsHeaders(event) {
+  const origin =
+    event.headers?.origin ||
+    event.headers?.Origin ||
+    '';
+
+  const headers = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json',
+    'Vary': 'Origin'
+  };
+
+  if (allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+
+  return headers;
+}
+
+// Inisialisasi Firebase Admin.
 if (!admin.apps.length) {
   let serviceAccount;
 
@@ -28,12 +56,21 @@ function getDb() {
 }
 
 exports.handler = async (event) => {
+  const corsHeaders = getCorsHeaders(event);
+
+  // Menangani preflight CORS dari browser.
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Method tidak diizinkan.'
@@ -48,9 +85,7 @@ exports.handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Request tidak valid.'
@@ -67,9 +102,7 @@ exports.handler = async (event) => {
   if (!GURU_PASSWORD) {
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error:
@@ -81,9 +114,7 @@ exports.handler = async (event) => {
   if (!SESSION_SECRET) {
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error:
@@ -101,9 +132,7 @@ exports.handler = async (event) => {
   ) {
     return {
       statusCode: 401,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Password guru salah.'
@@ -116,9 +145,7 @@ exports.handler = async (event) => {
   if (!db) {
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Firebase Admin belum terkonfigurasi.'
@@ -156,9 +183,7 @@ exports.handler = async (event) => {
     if (snapshot.size > 1) {
       return {
         statusCode: 409,
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           ok: false,
           error:
@@ -175,9 +200,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Gagal membaca data guru.'
@@ -190,6 +213,7 @@ exports.handler = async (event) => {
       ? assignedClasses[0]
       : '';
 
+  // Token sesi berlaku selama 12 jam.
   const expiry =
     Date.now() +
     12 * 60 * 60 * 1000;
@@ -197,25 +221,21 @@ exports.handler = async (event) => {
   const raw =
     `${teacherName}|guru|${classId}|${expiry}`;
 
-  const sig =
-    crypto
-      .createHmac(
-        'sha256',
-        SESSION_SECRET
-      )
-      .update(raw)
-      .digest('hex');
+  const sig = crypto
+    .createHmac(
+      'sha256',
+      SESSION_SECRET
+    )
+    .update(raw)
+    .digest('hex');
 
-  const token =
-    Buffer
-      .from(`${raw}|${sig}`)
-      .toString('base64');
+  const token = Buffer
+    .from(`${raw}|${sig}`)
+    .toString('base64');
 
   return {
     statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: corsHeaders,
     body: JSON.stringify({
       ok: true,
       token,

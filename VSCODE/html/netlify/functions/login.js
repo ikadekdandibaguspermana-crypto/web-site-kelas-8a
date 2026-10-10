@@ -10,6 +10,31 @@ const {
   getFirestore
 } = require('firebase-admin/firestore');
 
+const allowedOrigins = [
+  'http://localhost:5500',
+  'https://aventra-x-2026-web-bydandi.netlify.app'
+];
+
+function getCorsHeaders(event) {
+  const origin =
+    event.headers?.origin ||
+    event.headers?.Origin ||
+    '';
+
+  const headers = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json',
+    'Vary': 'Origin'
+  };
+
+  if (allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+
+  return headers;
+}
+
 if (!getApps().length) {
   let serviceAccount;
 
@@ -37,12 +62,20 @@ function getDb() {
 }
 
 exports.handler = async (event) => {
+  const corsHeaders = getCorsHeaders(event);
+
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: false,
         error: 'Method not allowed'
@@ -56,9 +89,7 @@ exports.handler = async (event) => {
     if (!db) {
       return {
         statusCode: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           ok: false,
           error: 'Firebase Admin belum terkonfigurasi.'
@@ -81,9 +112,7 @@ exports.handler = async (event) => {
     if (!SESSION_SECRET) {
       return {
         statusCode: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           ok: false,
           error: 'SESSION_SECRET belum dikonfigurasi.'
@@ -107,9 +136,7 @@ exports.handler = async (event) => {
       ) {
         return {
           statusCode: 401,
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             ok: false,
             error: 'Password admin salah.'
@@ -129,9 +156,7 @@ exports.handler = async (event) => {
       ) {
         return {
           statusCode: 400,
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             ok: false,
             error: 'Nama, PIN, dan kelas wajib diisi.'
@@ -157,9 +182,7 @@ exports.handler = async (event) => {
       if (snap.empty) {
         return {
           statusCode: 401,
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             ok: false,
             error: 'Nama atau kelas tidak ditemukan.'
@@ -167,20 +190,15 @@ exports.handler = async (event) => {
         };
       }
 
-      const studentDoc =
-        snap.docs[0];
-
-      const studentData =
-        studentDoc.data();
+      const studentDoc = snap.docs[0];
+      const studentData = studentDoc.data();
 
       if (
         String(studentData.pin || '') !== pin
       ) {
         return {
           statusCode: 401,
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             ok: false,
             error: 'PIN salah.'
@@ -194,9 +212,7 @@ exports.handler = async (event) => {
       ) {
         return {
           statusCode: 403,
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: corsHeaders,
           body: JSON.stringify({
             ok: false,
             error: 'Akun siswa tidak aktif.'
@@ -213,16 +229,13 @@ exports.handler = async (event) => {
         studentData.classId ||
         requestedClassId;
 
-      studentId =
-        studentDoc.id;
+      studentId = studentDoc.id;
     }
 
     else {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           ok: false,
           error: 'Tipe login tidak valid.'
@@ -230,6 +243,7 @@ exports.handler = async (event) => {
       };
     }
 
+    // Membuat token sesi yang berlaku selama 12 jam.
     const expiry =
       Date.now() +
       12 * 60 * 60 * 1000;
@@ -237,25 +251,21 @@ exports.handler = async (event) => {
     const raw =
       `${displayName}|${role}|${finalClassId || ''}|${expiry}`;
 
-    const sig =
-      crypto
-        .createHmac(
-          'sha256',
-          SESSION_SECRET
-        )
-        .update(raw)
-        .digest('hex');
+    const sig = crypto
+      .createHmac(
+        'sha256',
+        SESSION_SECRET
+      )
+      .update(raw)
+      .digest('hex');
 
-    const token =
-      Buffer
-        .from(`${raw}|${sig}`)
-        .toString('base64');
+    const token = Buffer
+      .from(`${raw}|${sig}`)
+      .toString('base64');
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         ok: true,
         token,
@@ -274,9 +284,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: getCorsHeaders(event),
       body: JSON.stringify({
         ok: false,
         error: 'Terjadi kesalahan pada server.'
