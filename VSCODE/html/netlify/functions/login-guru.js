@@ -213,25 +213,65 @@ exports.handler = async (event) => {
       ? assignedClasses[0]
       : '';
 
-  // Token sesi berlaku selama 12 jam.
-  const expiry =
-    Date.now() +
-    12 * 60 * 60 * 1000;
+  // Token JSON bertanda tangan dengan ID akun guru.
+  if (!teacherId) {
+    return {
+      statusCode: 409,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        ok: false,
+        error: 'Data akun guru belum tersedia. Login guru belum dapat digunakan.'
+      })
+    };
+  }
 
-  const raw =
-    `${teacherName}|guru|${classId}|${expiry}`;
+  const expiry = Date.now() + 12 * 60 * 60 * 1000;
+  const firebaseUid = `aventra-guru-${crypto
+    .createHash('sha256')
+    .update(String(teacherId))
+    .digest('hex')}`;
+  let firebaseCustomToken;
 
+  try {
+    firebaseCustomToken = await admin.auth().createCustomToken(
+      firebaseUid,
+      {
+        role: 'guru',
+        accountId: teacherId,
+        teacherId,
+        classId: classId || '',
+        assignedClasses
+      }
+    );
+  } catch (error) {
+    console.error('[login-guru] Firebase token error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        ok: false,
+        error: 'Gagal membuat sesi Firebase.'
+      })
+    };
+  }
+
+  const sessionPayload = {
+    accountId: teacherId,
+    firebaseUid,
+    name: teacherName,
+    role: 'guru',
+    classId: classId || null,
+    assignedClasses,
+    expiry
+  };
+  const payloadEncoded = Buffer
+    .from(JSON.stringify(sessionPayload))
+    .toString('base64url');
   const sig = crypto
-    .createHmac(
-      'sha256',
-      SESSION_SECRET
-    )
-    .update(raw)
+    .createHmac('sha256', SESSION_SECRET)
+    .update(payloadEncoded)
     .digest('hex');
-
-  const token = Buffer
-    .from(`${raw}|${sig}`)
-    .toString('base64');
+  const token = `${payloadEncoded}.${sig}`;
 
   return {
     statusCode: 200,
@@ -239,6 +279,10 @@ exports.handler = async (event) => {
     body: JSON.stringify({
       ok: true,
       token,
+      firebaseCustomToken,
+      firebaseUid,
+      accountId: teacherId,
+      expiry,
       role: 'guru',
       name: teacherName,
       classId: classId || null,

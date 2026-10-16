@@ -1,4 +1,48 @@
 const crypto = require('crypto');
+const { promisify } = require('util');
+const scrypt = promisify(crypto.scrypt);
+
+const STUDENT_PIN_SCRYPT = {
+  N: 16384,
+  r: 8,
+  p: 1,
+  keyLength: 64,
+  maxmem: 64 * 1024 * 1024
+};
+
+async function verifyStudentPin(pin, storedHash) {
+  if (typeof storedHash !== 'string') return false;
+
+  const parts = storedHash.split('$');
+  if (
+    parts.length !== 6 ||
+    parts[0] !== 'scrypt' ||
+    Number(parts[1]) !== STUDENT_PIN_SCRYPT.N ||
+    Number(parts[2]) !== STUDENT_PIN_SCRYPT.r ||
+    Number(parts[3]) !== STUDENT_PIN_SCRYPT.p
+  ) {
+    return false;
+  }
+
+  try {
+    const salt = Buffer.from(parts[4], 'base64url');
+    const expected = Buffer.from(parts[5], 'base64url');
+    if (salt.length < 16 || expected.length !== STUDENT_PIN_SCRYPT.keyLength) {
+      return false;
+    }
+
+    const actual = await scrypt(
+      pin,
+      salt,
+      expected.length,
+      STUDENT_PIN_SCRYPT
+    );
+
+    return crypto.timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
 
 const {
   initializeApp,
@@ -9,6 +53,10 @@ const {
 const {
   getFirestore
 } = require('firebase-admin/firestore');
+
+const {
+  getAuth
+} = require('firebase-admin/auth');
 
 const allowedOrigins = [
   'http://localhost:5500',
@@ -124,6 +172,7 @@ exports.handler = async (event) => {
     let displayName = '';
     let finalClassId = null;
     let studentId = null;
+    let accountId = null;
 
     if (type === 'admin') {
       const adminPassword =
@@ -146,6 +195,7 @@ exports.handler = async (event) => {
 
       role = 'admin';
       displayName = 'Admin';
+      accountId = 'admin';
     }
 
     else if (type === 'student') {
@@ -193,9 +243,7 @@ exports.handler = async (event) => {
       const studentDoc = snap.docs[0];
       const studentData = studentDoc.data();
 
-      if (
-        String(studentData.pin || '') !== pin
-      ) {
+      if (!await verifyStudentPin(pin, studentData.pinHash)) {
         return {
           statusCode: 401,
           headers: corsHeaders,
@@ -230,6 +278,7 @@ exports.handler = async (event) => {
         requestedClassId;
 
       studentId = studentDoc.id;
+      accountId = studentDoc.id;
     }
 
     else {
@@ -243,25 +292,39 @@ exports.handler = async (event) => {
       };
     }
 
-    // Membuat token sesi yang berlaku selama 12 jam.
-    const expiry =
-      Date.now() +
-      12 * 60 * 60 * 1000;
-
-    const raw =
-      `${displayName}|${role}|${finalClassId || ''}|${expiry}`;
-
+    // Token JSON bertanda tangan; ID akun ikut dilindungi tanda tangan.
+    const expiry = Date.now() + 12 * 60 * 60 * 1000;
+    const firebaseUid = `aventra-${role}-${crypto
+      .createHash('sha256')
+      .update(String(accountId))
+      .digest('hex')}`;
+    const firebaseCustomToken = await getAuth().createCustomToken(
+      firebaseUid,
+      {
+        role,
+        accountId,
+        studentId: studentId || '',
+        classId: finalClassId || '',
+        assignedClasses: []
+      }
+    );
+    const sessionPayload = {
+      accountId,
+      firebaseUid,
+      name: displayName,
+      role,
+      classId: finalClassId || null,
+      assignedClasses: [],
+      expiry
+    };
+    const payloadEncoded = Buffer
+      .from(JSON.stringify(sessionPayload))
+      .toString('base64url');
     const sig = crypto
-      .createHmac(
-        'sha256',
-        SESSION_SECRET
-      )
-      .update(raw)
+      .createHmac('sha256', SESSION_SECRET)
+      .update(payloadEncoded)
       .digest('hex');
-
-    const token = Buffer
-      .from(`${raw}|${sig}`)
-      .toString('base64');
+    const token = `${payloadEncoded}.${sig}`;
 
     return {
       statusCode: 200,
@@ -269,10 +332,14 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         ok: true,
         token,
+        firebaseCustomToken,
+        firebaseUid,
         role,
         name: displayName,
         classId: finalClassId,
-        studentId
+        studentId,
+        accountId,
+        expiry
       })
     };
 

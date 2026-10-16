@@ -1,4 +1,20 @@
 (function () {
+  const firebaseConfig = {
+    apiKey: "AIzaSyAruYX883CuAYkes1Uq-eYt7ZgpWR0iUG4",
+    authDomain: "ombak-nusantara.firebaseapp.com",
+    projectId: "ombak-nusantara",
+    storageBucket: "ombak-nusantara.firebasestorage.app",
+    messagingSenderId: "874381163137",
+    appId: "1:874381163137:web:c73d64a041fbab2b7c2b80",
+    measurementId: "G-33TLT4ZE17"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const firebaseAuth = firebase.auth();
+
   const loginGate = document.getElementById('loginGate');
   const gateLanding = document.getElementById('gateLanding');
   const loginBox = document.getElementById('loginBox');
@@ -56,10 +72,6 @@
   let selectedClassId = null;
 
 
-  /* =========================================================
-     RENDER KELAS A-J
-  ========================================================= */
-
   function renderClassButtons(grade) {
     classList.innerHTML = '';
 
@@ -99,10 +111,6 @@
   }
 
 
-  /* =========================================================
-     PILIH TINGKAT 7 / 8 / 9
-  ========================================================= */
-
   gradeCards.forEach((card) => {
     card.addEventListener('click', () => {
       selectedGrade = Number(card.dataset.grade);
@@ -126,20 +134,11 @@
     });
   });
 
-
-  /* =========================================================
-     API
-  ========================================================= */
-
   const IS_LOCAL_DEV = false;
 
   const API_BASE =
     'https://aventra-x-2026-web-bydandi.netlify.app';
 
-
-  /* =========================================================
-     AMBIL SESSION
-  ========================================================= */
 
   function getSession() {
     try {
@@ -154,6 +153,7 @@
 
       if (
         !data.token ||
+        data.token === 'local-dev-token' ||
         !data.expiry ||
         Date.now() > data.expiry
       ) {
@@ -168,11 +168,6 @@
     }
   }
 
-
-  /* =========================================================
-     SIMPAN SESSION
-  ========================================================= */
-
   function saveSession({
     token,
     role,
@@ -181,16 +176,20 @@
     classId,
     assignedClasses,
     teacherId,
-    studentId
+    studentId,
+    accountId,
+    firebaseUid,
+    expiry: serverExpiry
   }) {
 
     const expiry =
-      Date.now() + 12 * 60 * 60 * 1000;
+      Number(serverExpiry) || (Date.now() + 12 * 60 * 60 * 1000);
 
     sessionStorage.setItem(
       SESSION_KEY,
       JSON.stringify({
         token,
+        accountId: accountId ?? studentId ?? teacherId ?? (role === 'admin' ? 'admin' : null),
         role,
         name,
 
@@ -216,24 +215,25 @@
         studentId:
           studentId ?? null,
 
+        firebaseUid:
+          firebaseUid ?? null,
+
         expiry
       })
     );
   }
 
-
-  /* =========================================================
-     HAPUS SESSION
-  ========================================================= */
-
   function clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
   }
 
+  function expectedFirebaseUid(session) {
+    if (!session || !session.role || !session.accountId) {
+      return null;
+    }
 
-  /* =========================================================
-     TAMPILKAN APP
-  ========================================================= */
+    return session.firebaseUid || null;
+  }
 
   function showApp(session) {
     document.body.classList.remove('gate-pending');
@@ -252,21 +252,12 @@
     );
   }
 
-
-  /* =========================================================
-     TAMPILKAN LANDING
-  ========================================================= */
-
   function showLanding() {
     gateLanding.style.display = '';
 
     loginBox.style.display = 'none';
   }
 
-
-  /* =========================================================
-     TAMPILKAN LOGIN
-  ========================================================= */
 
   function showLoginBox() {
     gateLanding.style.display = 'none';
@@ -277,9 +268,6 @@
   }
 
 
-  /* =========================================================
-     TAMPILKAN LOGIN GATE
-  ========================================================= */
 
   function showLoginGate() {
     document.body.classList.add('gate-pending');
@@ -292,10 +280,6 @@
   }
 
 
-  /* =========================================================
-     MODE LOGIN
-     STUDENT / ADMIN / GURU
-  ========================================================= */
 
   function setMode(newMode) {
     mode = newMode;
@@ -352,10 +336,6 @@
   }
 
 
-  /* =========================================================
-     PROSES LOGIN
-  ========================================================= */
-
   async function doLogin() {
 
     loginError.textContent = '';
@@ -371,18 +351,12 @@
       let data;
 
 
-      /* =====================================================
-         LOCAL DEVELOPMENT
-      ===================================================== */
-
       if (IS_LOCAL_DEV) {
 
         await new Promise((resolve) =>
           setTimeout(resolve, 250)
         );
 
-
-        /* ADMIN */
 
         if (mode === 'admin') {
 
@@ -398,13 +372,14 @@
             ok: true,
             token: 'local-dev-token',
             role: 'admin',
+            accountId: 'admin',
+            expiry: Date.now() + 12 * 60 * 60 * 1000,
             name: 'Admin'
           };
 
         }
 
 
-        /* GURU */
 
         else if (mode === 'guru') {
 
@@ -425,6 +400,8 @@
 
             role:
               'guru',
+            accountId: null,
+            expiry: Date.now() + 12 * 60 * 60 * 1000,
 
             name:
               'Guru',
@@ -442,7 +419,6 @@
         }
 
 
-        /* SISWA */
 
         else {
 
@@ -466,6 +442,8 @@
 
             role:
               'student',
+            accountId: null,
+            expiry: Date.now() + 12 * 60 * 60 * 1000,
 
             name:
               loginName.value.trim(),
@@ -481,10 +459,6 @@
 
       }
 
-
-      /* =====================================================
-         LOGIN GURU
-      ===================================================== */
 
       else if (mode === 'guru') {
 
@@ -520,13 +494,8 @@
       }
 
 
-      /* =====================================================
-         LOGIN ADMIN / SISWA
-      ===================================================== */
-
       else {
 
-        /* SISWA HARUS PILIH KELAS */
 
         if (
           mode === 'student' &&
@@ -595,17 +564,15 @@
         }
       }
 
+      if (!data.firebaseCustomToken) {
+        throw new Error('Token Firebase tidak diterima dari server.');
+      }
 
-      /* =====================================================
-         SIMPAN SESSION
-      ===================================================== */
+      await firebaseAuth.signInWithCustomToken(
+        data.firebaseCustomToken
+      );
 
       saveSession(data);
-
-
-      /* =====================================================
-         MASUK KE APP
-      ===================================================== */
 
       showApp(data);
 
@@ -629,20 +596,10 @@
     }
   }
 
-
-  /* =========================================================
-     TOMBOL LOGIN
-  ========================================================= */
-
   loginSubmit.addEventListener(
     'click',
     doLogin
   );
-
-
-  /* =========================================================
-     ENTER UNTUK LOGIN
-  ========================================================= */
 
   [
     loginName,
@@ -664,11 +621,6 @@
 
   });
 
-
-  /* =========================================================
-     TAB LOGIN
-  ========================================================= */
-
   loginTabs.forEach((tab) => {
 
     tab.addEventListener(
@@ -683,11 +635,6 @@
     );
 
   });
-
-
-  /* =========================================================
-     NAVIGASI LANDING
-  ========================================================= */
 
   gateCardMasuk.addEventListener(
     'click',
@@ -715,17 +662,17 @@
     'click',
     showLanding
   );
-
-
-  /* =========================================================
-     LOGOUT
-  ========================================================= */
-
   logoutBtn.addEventListener(
     'click',
-    () => {
+    async () => {
 
       clearSession();
+
+      try {
+        await firebaseAuth.signOut();
+      } catch (err) {
+        console.error('[auth] logout Firebase gagal:', err);
+      }
 
       showLoginGate();
 
@@ -736,29 +683,39 @@
     }
   );
 
-
-  /* =========================================================
-     CEK SESSION SAAT HALAMAN DIBUKA
-  ========================================================= */
-
-  const existing =
-    getSession();
-
+  const existing = getSession();
 
   if (existing) {
+    firebaseAuth.onAuthStateChanged((user) => {
+      if (
+        user &&
+        user.uid === expectedFirebaseUid(existing)
+      ) {
+        showApp(existing);
+        return;
+      }
 
-    showApp(existing);
-
+      clearSession();
+      if (user) {
+        firebaseAuth.signOut().catch((err) =>
+          console.error('[auth] pembersihan sesi tidak cocok gagal:', err)
+        );
+      }
+      showLoginGate();
+    }, (err) => {
+      console.error('[auth] pemulihan sesi Firebase gagal:', err);
+      clearSession();
+      showLoginGate();
+    });
   } else {
+    if (firebaseAuth.currentUser) {
+      firebaseAuth.signOut().catch((err) =>
+        console.error('[auth] pembersihan sesi Firebase gagal:', err)
+      );
+    }
 
     showLoginGate();
-
   }
-
-
-  /* =========================================================
-     PUBLIC API
-  ========================================================= */
 
   window.AventraAuth = {
 

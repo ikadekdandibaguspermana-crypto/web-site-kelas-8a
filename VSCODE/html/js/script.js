@@ -8,8 +8,54 @@ const firebaseConfig = {
   measurementId: "G-33TLT4ZE17"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
+
+let geofenceSettings = null;
+let geofenceSettingsUnsubscribe = null;
+
+function geofenceDocRef() {
+  return db
+    .collection('settings')
+    .doc('geofence');
+}
+
+function startGeofenceSettingsListener() {
+  if (geofenceSettingsUnsubscribe) return;
+
+  geofenceSettingsUnsubscribe = geofenceDocRef().onSnapshot(
+    snapshot => {
+      geofenceSettings = snapshot.exists
+        ? snapshot.data()
+        : null;
+    },
+    error => {
+      geofenceSettingsUnsubscribe = null;
+      console.error(
+        'Gagal memuat pengaturan geofence:',
+        error
+      );
+    }
+  );
+}
+
+document.addEventListener(
+  'aventra:login',
+  startGeofenceSettingsListener
+);
+
+document.addEventListener(
+  'aventra:logout',
+  () => {
+    if (geofenceSettingsUnsubscribe) {
+      geofenceSettingsUnsubscribe();
+      geofenceSettingsUnsubscribe = null;
+    }
+    geofenceSettings = null;
+  }
+);
 
 function getActiveClassId(session) {
   const s = session || currentSessionInfo();
@@ -420,10 +466,7 @@ async function saveAttendanceWithOfflineQueue({
   date,
   studentName,
   status,
-  action = 'set',
-  lat = null,
-  lng = null,
-  detail = null
+  action = 'set'
 }) {
   const classId =
     getActiveClassId();
@@ -445,73 +488,22 @@ async function saveAttendanceWithOfflineQueue({
         };
 
   if (!navigator.onLine) {
-    await queuePendingAbsensi({
-      date,
-      studentName,
-      status,
-      action,
-      lat,
-      lng,
-      detail
-    });
-
-    currentDayData =
-      applyPendingToDayData(
-        currentDayData,
-        [
-          {
-            studentName,
-            status,
-            action
-          }
-        ]
-      );
-
-    return {
-      queued: true
-    };
+    throw new Error(
+      'Tidak ada koneksi internet. Absensi belum tersimpan; silakan coba lagi saat online.'
+    );
   }
 
-  try {
-    await db
-      .collection('absensi')
-      .doc(`${classId}_${date}`)
-      .set(
-        patch,
-        { merge: true }
-      );
+  await db
+    .collection('absensi')
+    .doc(`${classId}_${date}`)
+    .set(
+      patch,
+      { merge: true }
+    );
 
-    return {
-      queued: false
-    };
-  } catch (e) {
-    await queuePendingAbsensi({
-      date,
-      studentName,
-      status,
-      action,
-      lat,
-      lng,
-      detail
-    });
-
-    currentDayData =
-      applyPendingToDayData(
-        currentDayData,
-        [
-          {
-            studentName,
-            status,
-            action
-          }
-        ]
-      );
-
-    return {
-      queued: true,
-      error: e
-    };
-  }
+  return {
+    queued: false
+  };
 }
 
 function paintAbsensi(date, session) {
@@ -2049,26 +2041,25 @@ function renderNotifikasi(snap) {
     item.className =
       `notif-item ${d.type}`;
 
-    item.innerHTML = `
-      <span class="notif-icon">
-        ${typeIcon}
-      </span>
+    const icon = document.createElement('span');
+    icon.className = 'notif-icon';
+    icon.textContent = typeIcon;
 
-      <div class="notif-body">
-        <div class="notif-name">
-          ${d.studentName || '-'}
-          ${typeLabel}
-        </div>
+    const body = document.createElement('div');
+    body.className = 'notif-body';
 
-        <div class="notif-meta">
-          ${d.date || ''}
-          ·
-          ${timeAgoLabel(
-            d.createdAtMs || 0
-          )}
-        </div>
-      </div>
-    `;
+    const name = document.createElement('div');
+    name.className = 'notif-name';
+    name.textContent = `${d.studentName || '-'}${typeLabel}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'notif-meta';
+    meta.textContent = `${d.date || ''} · ${timeAgoLabel(
+      d.createdAtMs || 0
+    )}`;
+
+    body.append(name, meta);
+    item.append(icon, body);
 
     item.addEventListener(
       'click',
@@ -3647,156 +3638,6 @@ function handleGeoError(
   );
 
   stopGeoWatch(false);
-}
-
-geoActivateBtn.addEventListener(
-  'click',
-  () => {
-    if (
-      isWeekendDate(
-        todayStr()
-      )
-    ) {
-      alert(
-        'Absensi GPS tidak tersedia pada hari Minggu.'
-      );
-      return;
-    }
-
-    if (
-      !navigator.geolocation
-    ) {
-      alert(
-        'Perangkat/browser ini tidak mendukung deteksi lokasi.'
-      );
-      return;
-    }
-
-    if (
-      !geofenceSettings ||
-      geofenceSettings.lat ==
-        null
-    ) {
-      alert(
-        'Lokasi sekolah belum diatur oleh admin. Minta admin mengatur lokasi dulu di halaman Absensi.'
-      );
-      return;
-    }
-
-    geoActivateBtn.style.display =
-      'none';
-
-    geoStopBtn.style.display =
-      'inline-block';
-
-    setGeoStatus(
-      'Meminta izin lokasi...',
-      'warn'
-    );
-
-    geoFirstFixTimer =
-      setTimeout(
-        () => {
-          setGeoStatus(
-            'Masih mencari sinyal GPS... ini wajar sampai 30 detik. Coba pindah lebih dekat jendela/luar ruangan kalau terlalu lama.',
-            'warn'
-          );
-        },
-        6000
-      );
-
-    geoWatchId =
-      navigator.geolocation.watchPosition(
-        handleGeoPosition,
-        handleGeoError,
-        {
-          enableHighAccuracy:
-            true,
-          maximumAge:
-            5000,
-          timeout:
-            30000
-        }
-      );
-
-    geoCountdownTimer =
-      setInterval(
-        tickCountdown,
-        1000
-      );
-  }
-);
-
-geoStopBtn.addEventListener(
-  'click',
-  () =>
-    stopGeoWatch(true)
-);
-
-function updateGeoPanels(
-  date,
-  session
-) {
-  const isAdmin =
-    session.role ===
-    'admin';
-
-  geoAdminBox.style.display =
-    isAdmin
-      ? 'block'
-      : 'none';
-
-  if (isAdmin) {
-    geoStudentBox.style.display =
-      'none';
-
-    return;
-  }
-
-  if (
-    session.role ===
-    'guest'
-  ) {
-    geoStudentBox.style.display =
-      'none';
-
-    return;
-  }
-
-  const isToday =
-    date === todayStr();
-
-  const alreadySet =
-    !!(
-      currentDayData &&
-      currentDayData[
-        session.name
-      ]
-    );
-
-  const todayIsWeekend =
-    isWeekendDate(
-      todayStr()
-    );
-
-  if (
-    isToday &&
-    !alreadySet &&
-    !todayIsWeekend
-  ) {
-    geoStudentBox.style.display =
-      'block';
-  } else {
-    geoStudentBox.style.display =
-      'none';
-
-    if (
-      alreadySet ||
-      todayIsWeekend
-    ) {
-      stopGeoWatch(true);
-    }
-  }
 }
 
 geoActivateBtn.addEventListener(

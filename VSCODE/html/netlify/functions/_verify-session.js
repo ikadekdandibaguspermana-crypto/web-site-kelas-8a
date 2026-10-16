@@ -2,89 +2,68 @@ const crypto = require('crypto');
 
 function verifySession(authorizationHeader) {
   if (
-    !authorizationHeader ||
+    typeof authorizationHeader !== 'string' ||
     !authorizationHeader.startsWith('Bearer ')
   ) {
     return null;
   }
 
-  const token = authorizationHeader.slice(7);
+  const token = authorizationHeader.slice(7).trim();
+  const secret = process.env.SESSION_SECRET || '';
+
+  if (!token || !secret) return null;
+
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [payloadEncoded, signature] = parts;
+  if (!payloadEncoded || !/^[a-f0-9]{64}$/i.test(signature)) return null;
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payloadEncoded)
+    .digest('hex');
+
+  const actualBuf = Buffer.from(signature, 'hex');
+  const expectedBuf = Buffer.from(expectedSignature, 'hex');
+
+  if (
+    actualBuf.length !== expectedBuf.length ||
+    !crypto.timingSafeEqual(actualBuf, expectedBuf)
+  ) {
+    return null;
+  }
 
   try {
-    const decoded =
-      Buffer.from(token, 'base64').toString('utf8');
-
-    const parts = decoded.split('|');
-
-    if (parts.length !== 5) {
-      return null;
-    }
-
-    const [
-      name,
-      role,
-      classId,
-      expiry,
-      sig
-    ] = parts;
-
-    const SESSION_SECRET =
-      process.env.SESSION_SECRET || '';
-
-    if (!SESSION_SECRET) {
-      return null;
-    }
-
-    const raw =
-      `${name}|${role}|${classId}|${expiry}`;
-
-    const expectedSig =
-      crypto
-        .createHmac(
-          'sha256',
-          SESSION_SECRET
-        )
-        .update(raw)
-        .digest('hex');
-
-    const sigBuf =
-      Buffer.from(sig);
-
-    const expectedSigBuf =
-      Buffer.from(expectedSig);
+    const payload = JSON.parse(
+      Buffer.from(payloadEncoded, 'base64url').toString('utf8')
+    );
 
     if (
-      sigBuf.length !==
-      expectedSigBuf.length ||
-      !crypto.timingSafeEqual(
-        sigBuf,
-        expectedSigBuf
-      )
-    ) {
-      return null;
-    }
-
-    const expiryNumber =
-      Number(expiry);
-
-    if (
-      !Number.isFinite(expiryNumber) ||
-      Date.now() > expiryNumber
+      !payload ||
+      typeof payload.accountId !== 'string' ||
+      !payload.accountId ||
+      typeof payload.name !== 'string' ||
+      !['admin', 'student', 'guru'].includes(payload.role) ||
+      !Number.isFinite(payload.expiry) ||
+      Date.now() >= payload.expiry
     ) {
       return null;
     }
 
     return {
-      name,
-      role,
-      classId: classId || null
+      accountId: payload.accountId,
+      name: payload.name,
+      role: payload.role,
+      classId: payload.classId || null,
+      assignedClasses: Array.isArray(payload.assignedClasses)
+        ? payload.assignedClasses
+        : [],
+      expiry: payload.expiry
     };
-
   } catch {
     return null;
   }
 }
 
-module.exports = {
-  verifySession
-};
+module.exports = { verifySession };

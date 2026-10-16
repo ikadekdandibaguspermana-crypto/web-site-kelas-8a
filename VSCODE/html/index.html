@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
@@ -197,7 +198,7 @@
       </div>
       <div class="login-field">
         <label for="loginPin">PIN Kamu</label>
-        <input type="password" id="loginPin" autocomplete="off" inputmode="numeric" maxlength="4" placeholder="4 digit angka">
+        <input type="password" id="loginPin" autocomplete="off" inputmode="numeric" minlength="6" maxlength="12" pattern="[0-9]{6,12}" placeholder="6 sampai 12 angka">
       </div>
     </div>
 
@@ -642,3 +643,4 @@
 </script>
 </body>
 </html>
+
