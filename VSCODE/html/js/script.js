@@ -15,6 +15,314 @@ const db = firebase.firestore();
 
 let geofenceSettings = null;
 let geofenceSettingsUnsubscribe = null;
+let classInfoUnsubscribers = [];
+
+function stopClassInfoListeners() {
+  classInfoUnsubscribers.forEach(unsubscribe => {
+    try { unsubscribe(); } catch {}
+  });
+  classInfoUnsubscribers = [];
+}
+
+function showClassInfoState(elementId, message) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  element.replaceChildren();
+  const note = document.createElement('p');
+  note.className = 'list-empty';
+  note.textContent = message;
+  element.appendChild(note);
+}
+
+function formatClassInfoDate(value) {
+  let date = null;
+  if (value && typeof value.toDate === 'function') date = value.toDate();
+  else if (Number.isFinite(Number(value))) date = new Date(Number(value));
+  else if (typeof value === 'string' && value) date = new Date(value);
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    : '';
+}
+
+function renderClassAnnouncements(docs, classId) {
+  const list = document.getElementById('pengumumanList');
+  const empty = document.getElementById('pengumumanEmpty');
+  if (!list || !empty) return;
+  list.replaceChildren();
+  const items = docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(item => item.classId === classId &&
+      typeof (item.text || item.message || item.title) === 'string')
+    .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+  empty.textContent = `Belum ada pengumuman untuk kelas ${classId}.`;
+  empty.style.display = items.length ? 'none' : 'block';
+  items.forEach(item => {
+    const card = document.createElement('article');
+    card.className = 'pengumuman-item in';
+    const dot = document.createElement('span');
+    dot.className = 'pu-dot';
+    const body = document.createElement('div');
+    body.className = 'pu-body';
+    const text = document.createElement('p');
+    text.className = 'pu-text';
+    text.textContent = item.text || item.message || item.title;
+    body.appendChild(text);
+    const metaText = [item.authorName || item.author, formatClassInfoDate(item.createdAtMs || item.createdAt)]
+      .filter(Boolean).join(' · ');
+    if (metaText) {
+      const meta = document.createElement('p');
+      meta.className = 'pu-meta';
+      meta.textContent = metaText;
+      body.appendChild(meta);
+    }
+    card.append(dot, body);
+    list.appendChild(card);
+  });
+}
+
+function renderClassAgenda(docs, classId) {
+  const list = document.getElementById('agendaList');
+  const empty = document.getElementById('agendaEmpty');
+  if (!list || !empty) return;
+  list.replaceChildren();
+  const today = todayStr();
+  const items = docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(item => item.classId === classId && typeof item.title === 'string' && item.date)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  empty.textContent = `Belum ada agenda untuk kelas ${classId}.`;
+  empty.style.display = items.length ? 'none' : 'block';
+  items.forEach(item => {
+    const card = document.createElement('article');
+    card.className = `agenda-item in${String(item.date) < today ? ' past' : ''}`;
+    const dateBox = document.createElement('div');
+    dateBox.className = 'agenda-date';
+    const date = new Date(`${item.date}T00:00:00`);
+    const day = document.createElement('span');
+    day.className = 'ag-day';
+    day.textContent = Number.isNaN(date.getTime()) ? '—' : String(date.getDate());
+    const month = document.createElement('span');
+    month.textContent = Number.isNaN(date.getTime()) ? String(item.date) : date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+    dateBox.append(day, month);
+    const body = document.createElement('div');
+    body.className = 'agenda-body';
+    const title = document.createElement('h4');
+    title.textContent = item.title;
+    body.appendChild(title);
+    if (item.note) {
+      const note = document.createElement('p');
+      note.textContent = String(item.note);
+      body.appendChild(note);
+    }
+    card.append(dateBox, body);
+    list.appendChild(card);
+  });
+}
+
+function renderClassSchedule(snapshot, classId) {
+  const grid = document.getElementById('jadwalGrid');
+  const subtitle = document.getElementById('jadwalSubText');
+  if (!grid) return;
+  grid.replaceChildren();
+  const data = snapshot.exists ? snapshot.data() : null;
+  if (subtitle) subtitle.textContent = `Jadwal khusus kelas ${classId}.`;
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const storedSource = data && (data.classId === classId || snapshot.id === classId)
+    ? (data.days && typeof data.days === 'object' ? data.days : data)
+    : null;
+  if (!storedSource && currentSessionInfo().role !== 'admin') {
+    showClassInfoState('jadwalGrid', `Jadwal kelas ${classId} belum diisi di Firestore.`);
+    return;
+  }
+  const source = storedSource || {};
+  days.forEach(dayName => {
+    const card = document.createElement('article');
+    card.className = 'jadwal-day in';
+    const heading = document.createElement('h4');
+    heading.textContent = dayName;
+    card.appendChild(heading);
+      const entries = Array.isArray(source[dayName])
+        ? source[dayName].filter(entry => entry && typeof entry === 'object')
+        : [];
+    if (!entries.length) {
+      const noItems = document.createElement('p');
+      noItems.className = 'jadwal-empty-day';
+      noItems.textContent = 'Belum ada pelajaran';
+      card.appendChild(noItems);
+    } else {
+      entries.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'jadwal-entry';
+        const time = document.createElement('span');
+        time.className = 'je-time';
+        time.textContent = String(entry.waktu || entry.time || '');
+        const subject = document.createElement('span');
+        subject.className = 'je-subject';
+        subject.textContent = String(entry.mapel || entry.subject || '');
+        row.append(time, subject);
+        card.appendChild(row);
+      });
+    }
+    if (currentSessionInfo().role === 'admin') {
+      const addRow = document.createElement('div');
+      addRow.className = 'jadwal-add-row';
+      const timeInput = document.createElement('input');
+      timeInput.type = 'time';
+      timeInput.className = 'je-time-input';
+      timeInput.setAttribute('aria-label', `Jam pelajaran ${dayName}`);
+      const subjectInput = document.createElement('input');
+      subjectInput.type = 'text';
+      subjectInput.className = 'je-subject-input';
+      subjectInput.maxLength = 100;
+      subjectInput.placeholder = 'Mata pelajaran';
+      subjectInput.setAttribute('aria-label', `Mata pelajaran ${dayName}`);
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.className = 'jadwal-add-btn';
+      addButton.textContent = 'Tambah';
+      addButton.addEventListener('click', async () => {
+        const waktu = timeInput.value;
+        const mapel = subjectInput.value.trim();
+        if (!waktu || !mapel) {
+          subjectInput.focus();
+          return;
+        }
+        const nextDays = Object.fromEntries(days.map(name => [
+          name,
+          Array.isArray(source[name]) ? source[name].filter(entry => entry && typeof entry === 'object').map(entry => ({
+            waktu: String(entry.waktu || entry.time || ''),
+            mapel: String(entry.mapel || entry.subject || '')
+          })) : []
+        ]));
+        nextDays[dayName].push({ waktu, mapel });
+        nextDays[dayName].sort((a, b) => a.waktu.localeCompare(b.waktu));
+        addButton.disabled = true;
+        try {
+          await sendClassInfoAction('save-schedule', { days: nextDays });
+          subjectInput.value = '';
+        } catch (error) {
+          alert(error.message || 'Jadwal gagal disimpan.');
+        } finally {
+          addButton.disabled = false;
+        }
+      });
+      addRow.append(timeInput, subjectInput, addButton);
+      card.appendChild(addRow);
+    }
+    grid.appendChild(card);
+  });
+}
+
+async function sendClassInfoAction(action, payload) {
+  const token = window.AventraAuth?.getToken?.();
+  if (!token) throw new Error('Sesi login tidak ditemukan. Masuk kembali.');
+  const response = await fetch(
+    `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ action, ...payload })
+    }
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) {
+    throw new Error(result.error || 'Data kelas gagal disimpan.');
+  }
+  return result;
+}
+
+function setClassInfoComposerStatus(composerId, message, isError = false) {
+  const composer = document.getElementById(composerId);
+  if (!composer) return;
+  let status = composer.querySelector('.class-info-status');
+  if (!status) {
+    status = document.createElement('p');
+    status.className = 'class-info-status';
+    composer.appendChild(status);
+  }
+  status.textContent = message;
+  status.style.color = isError ? '#ff8a8a' : '';
+}
+
+function setupClassInfoComposer(session) {
+  const isAdmin = session?.role === 'admin';
+  const announcementComposer = document.getElementById('pengumumanComposer');
+  const agendaComposer = document.getElementById('agendaComposer');
+  if (announcementComposer) announcementComposer.style.display = isAdmin ? '' : 'none';
+  if (agendaComposer) agendaComposer.style.display = isAdmin ? '' : 'none';
+
+  const announcementButton = document.getElementById('pengumumanSubmit');
+  if (announcementButton) {
+    announcementButton.onclick = async () => {
+      const input = document.getElementById('pengumumanInput');
+      const text = input?.value.trim() || '';
+      if (!text) return setClassInfoComposerStatus('pengumumanComposer', 'Isi pengumuman terlebih dahulu.', true);
+      announcementButton.disabled = true;
+      try {
+        await sendClassInfoAction('save-announcement', { text });
+        input.value = '';
+        setClassInfoComposerStatus('pengumumanComposer', `Pengumuman untuk ${session.classId} berhasil diterbitkan.`);
+      } catch (error) {
+        setClassInfoComposerStatus('pengumumanComposer', error.message || 'Pengumuman gagal disimpan.', true);
+      } finally {
+        announcementButton.disabled = false;
+      }
+    };
+  }
+
+  const agendaButton = document.getElementById('agendaSubmit');
+  if (agendaButton) {
+    agendaButton.onclick = async () => {
+      const title = document.getElementById('agendaTitleInput')?.value.trim() || '';
+      const date = document.getElementById('agendaDateInput')?.value || '';
+      const note = document.getElementById('agendaNoteInput')?.value.trim() || '';
+      if (!title || !date) return setClassInfoComposerStatus('agendaComposer', 'Judul dan tanggal agenda wajib diisi.', true);
+      agendaButton.disabled = true;
+      try {
+        await sendClassInfoAction('save-agenda', { title, date, note });
+        document.getElementById('agendaTitleInput').value = '';
+        document.getElementById('agendaDateInput').value = '';
+        document.getElementById('agendaNoteInput').value = '';
+        setClassInfoComposerStatus('agendaComposer', `Agenda untuk ${session.classId} berhasil ditambahkan.`);
+      } catch (error) {
+        setClassInfoComposerStatus('agendaComposer', error.message || 'Agenda gagal disimpan.', true);
+      } finally {
+        agendaButton.disabled = false;
+      }
+    };
+  }
+}
+
+function startClassInfoListeners(session) {
+  stopClassInfoListeners();
+  setupClassInfoComposer(session);
+  const classId = getActiveClassId(session);
+  if (!classId || !/^[7-9][A-J]$/.test(classId)) {
+    showClassInfoState('pengumumanList', 'Masuk dengan kelas yang valid untuk melihat pengumuman.');
+    showClassInfoState('agendaList', 'Masuk dengan kelas yang valid untuk melihat agenda.');
+    showClassInfoState('jadwalGrid', 'Masuk dengan kelas yang valid untuk melihat jadwal.');
+    return;
+  }
+  const bindList = (collectionName, renderer, elementId, label) => {
+    const unsubscribe = db.collection(collectionName)
+      .where('classId', '==', classId)
+      .limit(100)
+      .onSnapshot(snapshot => renderer(snapshot.docs, classId), error => {
+        console.error(`[${collectionName}] gagal dimuat untuk ${classId}:`, error);
+        showClassInfoState(elementId, `Gagal memuat ${label} kelas ${classId}. Periksa koneksi dan izin Firestore.`);
+      });
+    classInfoUnsubscribers.push(unsubscribe);
+  };
+  bindList('pengumuman', renderClassAnnouncements, 'pengumumanList', 'pengumuman');
+  bindList('agenda', renderClassAgenda, 'agendaList', 'agenda');
+  const unsubscribeSchedule = db.collection('jadwal').doc(classId)
+    .onSnapshot(snapshot => renderClassSchedule(snapshot, classId), error => {
+      console.error(`[jadwal] gagal dimuat untuk ${classId}:`, error);
+      showClassInfoState('jadwalGrid', `Gagal memuat jadwal kelas ${classId}. Periksa koneksi dan izin Firestore.`);
+    });
+  classInfoUnsubscribers.push(unsubscribeSchedule);
+}
 
 function startGeofenceSettingsListener() {
   if (geofenceSettingsUnsubscribe) return;
@@ -56,6 +364,7 @@ document.addEventListener(
   'aventra:login',
   event => {
     startGeofenceSettingsListener();
+    startClassInfoListeners(event.detail || currentSessionInfo());
     initializeAttendance(event.detail);
     startAdminLocationMonitor();
   }
@@ -65,6 +374,7 @@ document.addEventListener(
   'aventra:logout',
   () => {
     attendanceLoadSequence++;
+    stopClassInfoListeners();
     stopGeoWatch(true);
     stopPostAbsenWatch();
     if (geofenceSettingsUnsubscribe) {

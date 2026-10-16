@@ -1,5 +1,5 @@
 const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { verifySession } = require('./_verify-session');
 
 const allowedOrigins = [
@@ -58,6 +58,68 @@ exports.handler = async event => {
 
   try {
     const db = getFirestore();
+    if (body.action === 'save-announcement') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat menerbitkan pengumuman.' }) };
+      }
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text || text.length > 2000) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Isi pengumuman wajib diisi dan maksimal 2.000 karakter.' }) };
+      }
+      const createdAtMs = Date.now();
+      await db.collection('pengumuman').add({
+        classId, text, authorName: session.name,
+        createdAt: FieldValue.serverTimestamp(), createdAtMs
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (body.action === 'save-agenda') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat menambahkan agenda.' }) };
+      }
+      const title = typeof body.title === 'string' ? body.title.trim() : '';
+      const note = typeof body.note === 'string' ? body.note.trim() : '';
+      const date = typeof body.date === 'string' ? body.date : '';
+      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? new Date(`${date}T00:00:00.000Z`)
+        : null;
+      if (!title || title.length > 150 || note.length > 2000 ||
+          !parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Judul, tanggal, atau catatan agenda tidak valid.' }) };
+      }
+      await db.collection('agenda').add({
+        classId, title, date, note, createdAt: FieldValue.serverTimestamp(), createdAtMs: Date.now()
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (body.action === 'save-schedule') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat mengubah jadwal.' }) };
+      }
+      const allowedDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      if (!body.days || typeof body.days !== 'object' || Array.isArray(body.days) ||
+          Object.keys(body.days).some(day => !allowedDays.includes(day))) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Format jadwal tidak valid.' }) };
+      }
+      const days = {};
+      for (const day of allowedDays) {
+        const entries = body.days[day] || [];
+        if (!Array.isArray(entries) || entries.length > 15 || entries.some(entry =>
+          !entry || typeof entry.waktu !== 'string' || !/^\d{1,2}:\d{2}$/.test(entry.waktu) ||
+          typeof entry.mapel !== 'string' || !entry.mapel.trim() || entry.mapel.length > 100
+        )) {
+          return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: `Isi jadwal hari ${day} tidak valid.` }) };
+        }
+        days[day] = entries.map(entry => ({ waktu: entry.waktu, mapel: entry.mapel.trim() }));
+      }
+      await db.collection('jadwal').doc(classId).set({
+        classId, days, updatedAt: Date.now(), updatedBy: session.accountId
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
     if (body.action === 'roster') {
       if (session.role !== 'admin' && session.role !== 'guru' && session.classId !== classId) {
         return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Tidak diizinkan melihat daftar kelas ini.' }) };
