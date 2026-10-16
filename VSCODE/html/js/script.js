@@ -3116,6 +3116,7 @@ let geoInsideSince = null;
 let geoOutsideStreak = 0;
 let geoCountdownTimer = null;
 let geoLastLiveWriteTs = 0;
+let geoLastFixAt = null;
 
 geoRadiusInput.addEventListener('input', () => {
   const radius = Number(geoRadiusInput.value);
@@ -3540,6 +3541,8 @@ function stopGeoWatch(
   geoOutsideStreak =
     0;
 
+  geoLastFixAt = null;
+
   if (geoCountdownTimer) {
     clearInterval(
       geoCountdownTimer
@@ -3729,6 +3732,18 @@ function tickCountdown() {
     return;
   }
 
+  // Never complete an automatic check-in from an old GPS fix. Browsers may
+  // throttle timers or suspend geolocation when the app is backgrounded.
+  if (geoLastFixAt === null || Date.now() - geoLastFixAt > 30000) {
+    geoInsideSince = null;
+    geoOutsideStreak = 0;
+    setGeoStatus(
+      'Pembaruan GPS terhenti — hitungan dibatalkan. Aktifkan kembali lokasi saat sinyal tersedia.',
+      'warn'
+    );
+    return;
+  }
+
   const minutesRequired =
     geofenceSettings.minutes ||
     3;
@@ -3781,6 +3796,8 @@ function tickCountdown() {
 function handleGeoPosition(
   pos
 ) {
+  geoLastFixAt = Date.now();
+
   if (
     geoFirstFixTimer
   ) {
@@ -3823,6 +3840,8 @@ function handleGeoPosition(
       pos.coords.accuracy ||
         0
     );
+  const confidentlyInside =
+    dist + acc <= radius;
 
   broadcastLiveLocation(
     pos,
@@ -3830,9 +3849,7 @@ function handleGeoPosition(
     acc
   );
 
-  if (
-    dist <= radius
-  ) {
+  if (confidentlyInside) {
     geoOutsideStreak =
       0;
 
@@ -3847,42 +3864,27 @@ function handleGeoPosition(
     tickCountdown();
   } else {
     geoOutsideStreak++;
+    // The configured rule requires staying inside continuously. One verified
+    // outside fix is enough to reset the dwell timer; don't let the interval
+    // finish attendance while the latest location is outside the geofence.
+    geoInsideSince = null;
+
+    let msg =
+      `Lokasi belum cukup meyakinkan berada di dalam radius (jarak ±${Math.round(
+        dist
+      )}m, akurasi GPS ±${acc}m, radius ${Math.round(radius)}m).`;
 
     if (
-      geoInsideSince !==
-        null &&
-      geoOutsideStreak >= 2
+      acc > 100
     ) {
-      geoInsideSince =
-        null;
-
-      setGeoStatus(
-        '📍 Kamu terdeteksi keluar area sekolah — hitungan dibatalkan. Kembali ke area sekolah untuk mulai ulang otomatis.',
-        'warn'
-      );
-    } else if (
-      geoInsideSince !==
-      null
-    ) {
-      tickCountdown();
-    } else {
-      let msg =
-        `Belum berada di area sekolah (jarak ±${Math.round(
-          dist
-        )}m dari titik sekolah, akurasi GPS ±${acc}m).`;
-
-      if (
-        acc > 100
-      ) {
-        msg +=
-          ' Sinyal GPS lemah — coba pindah ke tempat terbuka untuk hasil lebih akurat.';
-      }
-
-      setGeoStatus(
-        msg,
-        'warn'
-      );
+      msg +=
+        ' Sinyal GPS lemah — coba pindah ke tempat terbuka untuk hasil lebih akurat.';
     }
+
+    setGeoStatus(
+      msg,
+      'warn'
+    );
   }
 }
 
@@ -3975,6 +3977,8 @@ geoActivateBtn.addEventListener(
         },
         6000
       );
+
+    geoLastFixAt = null;
 
     geoWatchId =
       navigator.geolocation.watchPosition(
