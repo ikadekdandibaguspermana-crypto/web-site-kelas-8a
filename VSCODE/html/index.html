@@ -370,6 +370,11 @@
     <p>Cari alamat, klik di peta, atau drag marker untuk menentukan titik sekolah. Siswa yang berada dalam radius ini selama waktu yang ditentukan akan otomatis tercatat Hadir.</p>
     <input type="text" id="geoMapSearch" placeholder="Cari alamat sekolah..." class="absen-date" style="width:100%;margin-bottom:8px;">
     <div id="geoMapContainer" style="height:280px;border-radius:12px;margin-bottom:12px;overflow:hidden;"></div>
+    <div class="geo-live-monitor">
+      <h4>Lokasi Murid Aktif</h4>
+      <p>Peta dan daftar diperbarui berkala selama murid mengaktifkan GPS di halaman absensi.</p>
+      <div id="geoLiveLocationList" aria-live="polite">Belum ada lokasi murid yang aktif.</div>
+    </div>
     <div class="geo-admin-row">
       <div class="geo-admin-field">
         <label>Latitude</label>

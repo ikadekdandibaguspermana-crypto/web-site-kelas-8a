@@ -498,12 +498,12 @@
 
 
         if (
-          mode === 'student' &&
+          (mode === 'student' || mode === 'admin') &&
           !selectedClassId
         ) {
 
           loginError.textContent =
-            'Pilih tingkat dan kelas terlebih dahulu.';
+            'Pilih tingkat dan kelas yang akan digunakan terlebih dahulu.';
 
           return;
         }
@@ -517,7 +517,10 @@
                   'admin',
 
                 password:
-                  loginAdminPass.value
+                  loginAdminPass.value,
+
+                classId:
+                  selectedClassId
               }
 
             : {
@@ -666,6 +669,10 @@
     'click',
     async () => {
 
+      document.dispatchEvent(
+        new CustomEvent('aventra:logout')
+      );
+
       clearSession();
 
       try {
@@ -675,10 +682,6 @@
       }
 
       showLoginGate();
-
-      document.dispatchEvent(
-        new CustomEvent('aventra:logout')
-      );
 
     }
   );
@@ -723,6 +726,8 @@
 
     getToken: () =>
       (getSession() || {}).token || null,
+
+    getApiBase: () => API_BASE,
 
     getRole: () =>
       (getSession() || {}).role || null,

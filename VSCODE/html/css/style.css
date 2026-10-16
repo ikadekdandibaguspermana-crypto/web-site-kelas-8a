@@ -856,6 +856,11 @@
   .geo-admin-actions .geo-save{ background:var(--gold); border-color:var(--gold); color:var(--bg-void); }
   .geo-admin-actions .geo-save:hover{ background:var(--gold-soft); border-color:var(--gold-soft); }
   .geo-admin-status{ font-family:var(--font-mono); font-size:11px; color:var(--teal); }
+  .geo-live-monitor{ margin:14px 0; padding:14px; border:1px solid var(--line-soft); border-radius:12px; background:rgba(8,12,27,0.28); }
+  .geo-live-monitor h4{ margin:0 0 6px; }
+  .geo-live-monitor p{ margin:0 0 10px; font-size:12px; }
+  #geoLiveLocationList{ display:grid; gap:7px; font-size:12px; }
+  .geo-live-location-row{ padding:8px 10px; border-radius:8px; background:rgba(54,136,255,0.09); color:var(--text-hi); }
 
   .geo-student-box{ text-align:left; }
   .geo-stop-btn{

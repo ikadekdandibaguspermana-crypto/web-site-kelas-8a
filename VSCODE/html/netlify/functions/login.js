@@ -193,9 +193,21 @@ exports.handler = async (event) => {
         };
       }
 
+      if (!/^[7-9][A-J]$/.test(requestedClassId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            ok: false,
+            error: 'Pilih kelas yang akan dikelola.'
+          })
+        };
+      }
+
       role = 'admin';
       displayName = 'Admin';
       accountId = 'admin';
+      finalClassId = requestedClassId;
     }
 
     else if (type === 'student') {

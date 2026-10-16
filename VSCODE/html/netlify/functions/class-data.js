@@ -1,0 +1,158 @@
+const { initializeApp, getApps, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const { verifySession } = require('./_verify-session');
+
+const allowedOrigins = [
+  'http://localhost:5500',
+  'https://aventra-x-2026-web-bydandi.netlify.app'
+];
+
+function headersFor(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  const headers = {
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+    Vary: 'Origin'
+  };
+  if (allowedOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
+}
+
+if (!getApps().length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '');
+    initializeApp({ credential: cert(serviceAccount) });
+  } catch {
+    // Keep module loading safe; the handler reports a configuration error.
+  }
+}
+
+exports.handler = async event => {
+  const headers = headersFor(event);
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ ok: false, error: 'Method not allowed.' }) };
+  }
+
+  const session = verifySession(event.headers?.authorization || event.headers?.Authorization);
+  if (!session) {
+    return { statusCode: 401, headers, body: JSON.stringify({ ok: false, error: 'Sesi tidak valid atau sudah berakhir.' }) };
+  }
+  if (!getApps().length) {
+    return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'Layanan data belum siap.' }) };
+  }
+
+  let body;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Permintaan tidak valid.' }) };
+  }
+
+  const classId = session.classId;
+  if (!/^[7-9][A-J]$/.test(classId || '')) {
+    return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas aktif tidak ditemukan di sesi.' }) };
+  }
+
+  try {
+    const db = getFirestore();
+    if (body.action === 'roster') {
+      if (session.role !== 'admin' && session.role !== 'guru' && session.classId !== classId) {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Tidak diizinkan melihat daftar kelas ini.' }) };
+      }
+      if (session.role === 'guru' && !session.assignedClasses.includes(classId)) {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas ini bukan kelas tugas Anda.' }) };
+      }
+
+      const snapshot = await db.collection('students')
+        .where('classId', '==', classId)
+        .limit(300)
+        .get();
+      const students = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          return {
+            name: typeof data.name === 'string' ? data.name.trim() : '',
+            active: data.status === 'active' && data.role === 'student'
+          };
+        })
+        .filter(student => student.name && student.active)
+        .map(({ name }) => ({ name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, classId, students }) };
+    }
+
+    if (body.action === 'locations') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat melihat lokasi aktif.' }) };
+      }
+      const cutoff = Date.now() - 10 * 60 * 1000;
+      const snapshot = await db.collection('liveLocationPrivate')
+        .where('classId', '==', classId)
+        .limit(300)
+        .get();
+      const locations = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          return {
+            name: typeof data.name === 'string' ? data.name : 'Murid',
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            dist: Number(data.dist),
+            acc: Number(data.acc),
+            updatedAt: Number(data.updatedAt)
+          };
+        })
+        .filter(item => Number.isFinite(item.lat) && Number.isFinite(item.lng) &&
+          item.lat >= -90 && item.lat <= 90 && item.lng >= -180 && item.lng <= 180 &&
+          Number.isFinite(item.dist) && item.dist >= 0 &&
+          Number.isFinite(item.acc) && item.acc >= 0 &&
+          Number.isFinite(item.updatedAt) && item.updatedAt >= cutoff)
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, classId, locations }) };
+    }
+
+    if (body.action === 'geofence') {
+      const snapshot = await db.collection('geofenceConfig').doc('school').get();
+      const data = snapshot.exists ? snapshot.data() : null;
+      const geofence = data && Number.isFinite(Number(data.lat)) &&
+        Number.isFinite(Number(data.lng))
+        ? {
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            radius: Number(data.radius) || 120,
+            minutes: Number(data.minutes) || 3
+          }
+        : null;
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, geofence }) };
+    }
+
+    if (body.action === 'save-geofence') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat mengubah lokasi sekolah.' }) };
+      }
+      const lat = Number(body.lat);
+      const lng = Number(body.lng);
+      const radius = Number(body.radius);
+      const minutes = Number(body.minutes);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180 ||
+          !Number.isInteger(radius) || radius < 20 || radius > 1000 ||
+          !Number.isInteger(minutes) || minutes < 1 || minutes > 30) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Koordinat, radius, atau waktu di luar batas yang diizinkan.' }) };
+      }
+      await db.collection('geofenceConfig').doc('school').set({
+        lat, lng, radius, minutes, updatedAt: Date.now(), updatedBy: session.accountId
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Jenis data tidak dikenal.' }) };
+  } catch (error) {
+    console.error('[class-data]', error);
+    return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'Gagal mengambil data kelas.' }) };
+  }
+};

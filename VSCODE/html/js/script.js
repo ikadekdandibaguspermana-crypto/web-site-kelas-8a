@@ -16,44 +16,68 @@ const db = firebase.firestore();
 let geofenceSettings = null;
 let geofenceSettingsUnsubscribe = null;
 
-function geofenceDocRef() {
-  return db
-    .collection('settings')
-    .doc('geofence');
-}
-
 function startGeofenceSettingsListener() {
   if (geofenceSettingsUnsubscribe) return;
 
-  geofenceSettingsUnsubscribe = geofenceDocRef().onSnapshot(
-    snapshot => {
-      geofenceSettings = snapshot.exists
-        ? snapshot.data()
-        : null;
-    },
-    error => {
-      geofenceSettingsUnsubscribe = null;
-      console.error(
-        'Gagal memuat pengaturan geofence:',
-        error
+  const refreshSettings = async () => {
+    const token = window.AventraAuth?.getToken?.();
+    if (!token) return;
+    try {
+      const response = await fetch(
+        `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ action: 'geofence' })
+        }
       );
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Pengaturan GPS gagal dimuat.');
+      geofenceSettings = result.geofence || null;
+      syncGeofenceForm();
+      const session = currentSessionInfo();
+      if (session.role && absenDateInput.value) {
+        updateGeoPanels(absenDateInput.value, session);
+      }
+    } catch (error) {
+      console.error('Gagal memuat pengaturan geofence:', error);
     }
-  );
+  };
+
+  refreshSettings();
+  const timer = setInterval(refreshSettings, 30000);
+  geofenceSettingsUnsubscribe = () => clearInterval(timer);
 }
 
 document.addEventListener(
   'aventra:login',
-  startGeofenceSettingsListener
+  event => {
+    startGeofenceSettingsListener();
+    initializeAttendance(event.detail);
+    startAdminLocationMonitor();
+  }
 );
 
 document.addEventListener(
   'aventra:logout',
   () => {
+    attendanceLoadSequence++;
+    stopGeoWatch(true);
+    stopPostAbsenWatch();
     if (geofenceSettingsUnsubscribe) {
       geofenceSettingsUnsubscribe();
       geofenceSettingsUnsubscribe = null;
     }
     geofenceSettings = null;
+    stopAttendanceListener();
+    stopAdminLocationMonitor();
+    currentDayData = {};
+    kelasLengkap = [];
+    renderRosterGrid([]);
+    if (absenList) absenList.innerHTML = '';
   }
 );
 
@@ -230,6 +254,11 @@ let kelasLengkap = [
   }))
 ];
 
+let currentDayData = {};
+let attendanceUnsubscribe = null;
+let attendanceLoadSequence = 0;
+let adminLocationTimer = null;
+
 function findStudentByName(typed) {
   const clean = String(typed || '')
     .trim()
@@ -400,31 +429,78 @@ function renderRosterGrid(list) {
       String(index + 1)
         .padStart(2, '0');
 
-    card.innerHTML = `
-      <div class="roster-id">${num}</div>
-      <div class="roster-info">
-        <span>${student.name}</span>
-      </div>
-    `;
+    const id = document.createElement('div');
+    id.className = 'roster-id';
+    id.textContent = num;
+    const info = document.createElement('div');
+    info.className = 'roster-info';
+    const name = document.createElement('span');
+    name.textContent = student.name;
+    info.appendChild(name);
+    card.append(id, info);
 
     rosterGrid.appendChild(card);
   });
 }
 
 async function tryLoadRosterFromFirestore() {
-  const classId =
-    getActiveClassId();
+  const session = currentSessionInfo();
+  const rawSession = window.AventraAuth?.getSession?.();
+  const classId = getActiveClassId(session);
+  const token = rawSession?.token;
+  const sequence = ++attendanceLoadSequence;
 
-  if (!classId) {
-    console.info(
-      '[roster] classId belum tersedia.'
-    );
+  stopAttendanceListener();
+  currentDayData = {};
+
+  if (!classId || !token) {
+    showAttendanceLoadError('Kelas aktif tidak ditemukan. Keluar lalu pilih kelas dan masuk kembali.');
     return;
   }
 
-  console.info(
-    `[roster] Data siswa untuk ${classId} membutuhkan endpoint server aman.`
-  );
+  try {
+    const response = await fetch(
+      `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'roster' })
+      }
+    );
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || 'Daftar kelas gagal dimuat.');
+    }
+    if (sequence !== attendanceLoadSequence) return;
+
+    kelasLengkap = result.students.map(student => ({
+      name: student.name,
+      jabatan: ''
+    }));
+    renderRosterGrid(kelasLengkap);
+
+    if (!kelasLengkap.length) {
+      showAttendanceLoadError(`Belum ada roster murid untuk kelas ${classId}.`);
+      return;
+    }
+    if (session.role !== 'admin' && session.role !== 'guru' &&
+        !kelasLengkap.some(student => student.name.toLocaleLowerCase('id-ID') ===
+          String(session.name || '').trim().toLocaleLowerCase('id-ID'))) {
+      showAttendanceLoadError('Akunmu belum tercantum di roster kelas ini. Hubungi Admin untuk memeriksa kelas dan ejaan nama.');
+      return;
+    }
+
+    if (!absenDateInput.value) absenDateInput.value = todayStr();
+    listenAttendanceForDate(absenDateInput.value, session);
+  } catch (error) {
+    if (sequence !== attendanceLoadSequence) return;
+    console.error('[roster] gagal memuat:', error);
+    renderRosterGrid([]);
+    showAttendanceLoadError(error.message || 'Data kelas gagal dimuat. Coba masuk kembali saat internet tersedia.');
+  }
 }
 
 const rosterGrid =
@@ -432,15 +508,51 @@ const rosterGrid =
     'rosterGrid'
   );
 
-if (rosterGrid) {
-  renderRosterGrid(
-    roster.map(name => ({
-      name
-    }))
+function showAttendanceLoadError(message) {
+  if (absenList) {
+    absenList.innerHTML = '';
+    const notice = document.createElement('p');
+    notice.className = 'absen-note show';
+    notice.textContent = message;
+    absenList.appendChild(notice);
+  }
+}
+
+function stopAttendanceListener() {
+  if (attendanceUnsubscribe) {
+    attendanceUnsubscribe();
+    attendanceUnsubscribe = null;
+  }
+}
+
+function listenAttendanceForDate(date, session = currentSessionInfo()) {
+  stopAttendanceListener();
+  const ref = absenDocRef(date);
+  if (!ref) {
+    showAttendanceLoadError('Kelas aktif tidak ditemukan.');
+    return;
+  }
+  attendanceUnsubscribe = ref.onSnapshot(
+    snapshot => {
+      currentDayData = snapshot.exists ? snapshot.data() : {};
+      paintAbsensi(date, session);
+    },
+    error => {
+      console.error('[absensi] gagal memuat:', error);
+      showAttendanceLoadError('Data absensi tidak dapat dimuat. Periksa koneksi dan akses Firestore.');
+    }
   );
 }
 
-tryLoadRosterFromFirestore();
+function initializeAttendance() {
+  const session = currentSessionInfo();
+  if (!session.role) return;
+  if (!absenDateInput.value) absenDateInput.value = todayStr();
+  if (session.role === 'admin') {
+    updateGeoPanels(absenDateInput.value, session);
+  }
+  tryLoadRosterFromFirestore(session);
+}
 
 function ensureWeekendBanner() {
   let el = document.getElementById('absenWeekendBanner');
@@ -2735,6 +2847,14 @@ const absenResetBtn =
 const absenDateInput =
   document.getElementById('absenDate');
 
+absenDateInput.addEventListener('change', () => {
+  const session = currentSessionInfo();
+  if (!session.role) return;
+  const date = absenDateInput.value || todayStr();
+  absenDateInput.value = date;
+  listenAttendanceForDate(date, session);
+});
+
 function todayStr() {
   const now = new Date();
   const year = now.getFullYear();
@@ -2970,6 +3090,162 @@ const geoStopBtn =
 const geoStatusLine =
   document.getElementById('geoStatusLine');
 
+let geoMap = null;
+let geoMarker = null;
+let geoCircle = null;
+let geoLiveLayer = null;
+
+geoRadiusInput.addEventListener('input', () => {
+  const radius = Number(geoRadiusInput.value);
+  if (geoCircle && Number.isFinite(radius) && radius >= 20 && radius <= 1000) {
+    geoCircle.setRadius(radius);
+  }
+});
+
+function setGeoPoint(lat, lng) {
+  geoLatInput.value = Number(lat).toFixed(6);
+  geoLngInput.value = Number(lng).toFixed(6);
+  if (geoMap && geoMarker && geoCircle) {
+    const point = [Number(lat), Number(lng)];
+    geoMarker.setLatLng(point);
+    geoCircle.setLatLng(point);
+    geoMap.panTo(point);
+  }
+}
+
+function syncGeofenceForm() {
+  if (!geoAdminBox) return;
+  if (geofenceSettings && Number.isFinite(Number(geofenceSettings.lat)) &&
+      Number.isFinite(Number(geofenceSettings.lng))) {
+    geoLatInput.value = Number(geofenceSettings.lat).toFixed(6);
+    geoLngInput.value = Number(geofenceSettings.lng).toFixed(6);
+    geoRadiusInput.value = geofenceSettings.radius || 120;
+    geoMinutesInput.value = geofenceSettings.minutes || 3;
+    if (geoMap) {
+      const point = [Number(geofenceSettings.lat), Number(geofenceSettings.lng)];
+      geoMap.setView(point, Math.max(geoMap.getZoom(), 16));
+      geoMarker.setLatLng(point);
+      geoCircle.setLatLng(point);
+      geoCircle.setRadius(Number(geofenceSettings.radius) || 120);
+    }
+  }
+}
+
+function initGeoMap() {
+  if (geoMap || !window.L) return;
+  const container = document.getElementById('geoMapContainer');
+  if (!container) return;
+  const lat = Number(geofenceSettings?.lat);
+  const lng = Number(geofenceSettings?.lng);
+  const center = Number.isFinite(lat) && Number.isFinite(lng)
+    ? [lat, lng]
+    : [-8.65, 115.22];
+  geoMap = L.map(container).setView(center, 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(geoMap);
+  geoMarker = L.marker(center, { draggable: true }).addTo(geoMap);
+  geoCircle = L.circle(center, {
+    radius: Number(geofenceSettings?.radius) || 120,
+    color: '#e8b93d',
+    fillOpacity: 0.12
+  }).addTo(geoMap);
+  geoLiveLayer = L.layerGroup().addTo(geoMap);
+  geoMap.on('click', event => setGeoPoint(event.latlng.lat, event.latlng.lng));
+  geoMarker.on('dragend', () => {
+    const point = geoMarker.getLatLng();
+    setGeoPoint(point.lat, point.lng);
+  });
+  const search = document.getElementById('geoMapSearch');
+  if (search) {
+    search.addEventListener('keydown', async event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const query = search.value.trim();
+      if (!query) return;
+      geoAdminStatus.textContent = 'Mencari lokasi…';
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+        const results = await response.json();
+        if (!response.ok || !results.length) throw new Error('Alamat tidak ditemukan.');
+        const point = results[0];
+        setGeoPoint(point.lat, point.lon);
+        geoMap.setZoom(17);
+        geoAdminStatus.textContent = 'Lokasi ditemukan. Periksa titik lalu simpan.';
+      } catch (error) {
+        geoAdminStatus.textContent = error.message || 'Pencarian lokasi gagal.';
+      }
+    });
+  }
+  syncGeofenceForm();
+  setTimeout(() => geoMap?.invalidateSize(), 100);
+}
+
+function stopAdminLocationMonitor() {
+  if (adminLocationTimer) {
+    clearInterval(adminLocationTimer);
+    adminLocationTimer = null;
+  }
+  if (geoLiveLayer) geoLiveLayer.clearLayers();
+  const list = document.getElementById('geoLiveLocationList');
+  if (list) list.textContent = '';
+}
+
+async function refreshAdminLocations() {
+  const session = currentSessionInfo();
+  const rawSession = window.AventraAuth?.getSession?.();
+  const list = document.getElementById('geoLiveLocationList');
+  if (session.role !== 'admin' || !rawSession?.token || !list) return;
+  try {
+    const response = await fetch(
+      `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${rawSession.token}`
+        },
+        body: JSON.stringify({ action: 'locations' })
+      }
+    );
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || 'Lokasi aktif gagal dimuat.');
+    list.replaceChildren();
+    if (geoLiveLayer) geoLiveLayer.clearLayers();
+    if (!result.locations.length) {
+      list.textContent = 'Belum ada lokasi murid yang aktif. Murid perlu membuka absensi dan mengaktifkan GPS.';
+      return;
+    }
+    result.locations.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'geo-live-location-row';
+      const ageSeconds = Math.max(0, Math.floor((Date.now() - item.updatedAt) / 1000));
+      row.textContent = `${item.name} · ${Math.round(item.dist)} m dari titik sekolah · akurasi ±${Math.round(item.acc || 0)} m · diperbarui ${ageSeconds} dtk lalu`;
+      list.appendChild(row);
+      if (geoLiveLayer && window.L) {
+        L.circleMarker([item.lat, item.lng], {
+          radius: 7,
+          color: '#3688ff',
+          fillOpacity: 0.85
+        }).addTo(geoLiveLayer);
+      }
+    });
+  } catch (error) {
+    console.error('[lokasi Admin]', error);
+    list.textContent = error.message || 'Lokasi aktif gagal dimuat.';
+  }
+}
+
+function startAdminLocationMonitor() {
+  stopAdminLocationMonitor();
+  if (currentSessionInfo().role !== 'admin') return;
+  initGeoMap();
+  refreshAdminLocations();
+  adminLocationTimer = setInterval(refreshAdminLocations, 10000);
+}
+
 geoUseLocationBtn.addEventListener('click', () => {
   if (!navigator.geolocation) {
     alert('Perangkat/browser ini tidak mendukung deteksi lokasi.');
@@ -2981,22 +3257,9 @@ geoUseLocationBtn.addEventListener('click', () => {
 
   navigator.geolocation.getCurrentPosition(
     pos => {
-      geoLatInput.value =
-        pos.coords.latitude.toFixed(6);
-
-      geoLngInput.value =
-        pos.coords.longitude.toFixed(6);
-
-      if (geoMap) {
-        const ll = [
-          pos.coords.latitude,
-          pos.coords.longitude
-        ];
-
-        geoMap.setView(ll, 17);
-        geoMarker.setLatLng(ll);
-        geoCircle.setLatLng(ll);
-      }
+      initGeoMap();
+      setGeoPoint(pos.coords.latitude, pos.coords.longitude);
+      if (geoMap) geoMap.setView([pos.coords.latitude, pos.coords.longitude], 17);
 
       const acc =
         Math.round(pos.coords.accuracy);
@@ -3047,24 +3310,28 @@ geoSaveSettingsBtn.addEventListener(
       );
 
     const radius =
-      parseInt(
-        geoRadiusInput.value,
-        10
-      ) || 120;
+      geoRadiusInput.value.trim()
+        ? parseInt(geoRadiusInput.value, 10)
+        : 120;
 
     const minutes =
-      parseInt(
-        geoMinutesInput.value,
-        10
-      ) || 3;
+      geoMinutesInput.value.trim()
+        ? parseInt(geoMinutesInput.value, 10)
+        : 3;
 
     if (
       Number.isNaN(lat) ||
       Number.isNaN(lng)
+      || lat < -90 || lat > 90
+      || lng < -180 || lng > 180
     ) {
       alert(
         'Klik "Pakai Lokasi Saya Sekarang" atau pilih titik di peta dulu.'
       );
+      return;
+    }
+    if (radius < 20 || radius > 1000 || minutes < 1 || minutes > 30) {
+      alert('Radius harus 20–1000 meter dan waktu 1–30 menit.');
       return;
     }
 
@@ -3072,12 +3339,32 @@ geoSaveSettingsBtn.addEventListener(
       true;
 
     try {
-      await geofenceDocRef().set({
-        lat,
-        lng,
-        radius,
-        minutes
-      });
+      const token = window.AventraAuth?.getToken?.();
+      if (!token) throw new Error('Sesi Admin tidak ditemukan. Masuk kembali.');
+      const response = await fetch(
+        `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'save-geofence',
+            lat,
+            lng,
+            radius,
+            minutes
+          })
+        }
+      );
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Pengaturan lokasi gagal disimpan.');
+      }
+      geofenceSettings = { lat, lng, radius, minutes };
+      if (geoCircle) geoCircle.setRadius(radius);
+      updateGeoPanels(absenDateInput.value || todayStr(), currentSessionInfo());
 
       geoAdminStatus.textContent =
         'Tersimpan ✓';
@@ -3141,26 +3428,13 @@ function broadcastLiveLocation(
 
   if (
     now - geoLastLiveWriteTs <
-    4000
+    10000
   ) {
     return;
   }
 
   geoLastLiveWriteTs =
     now;
-
-  const bearing =
-    (
-      geofenceSettings &&
-      geofenceSettings.lat != null
-    )
-      ? bearingDegrees(
-          geofenceSettings.lat,
-          geofenceSettings.lng,
-          pos.coords.latitude,
-          pos.coords.longitude
-        )
-      : 0;
 
   const classId =
     getActiveClassId(
@@ -3171,34 +3445,26 @@ function broadcastLiveLocation(
     return;
   }
 
-  const liveLocationDocId =
-    `${classId}__${buildSafeStudentKey(
-      session.name
-    )}`;
-
-  db.collection('liveLocation')
-    .doc(liveLocationDocId)
-    .set({
-      name: session.name,
-      classId,
-      lat:
-        pos.coords.latitude,
-      lng:
-        pos.coords.longitude,
-      dist:
-        Math.round(dist),
-      bearing:
-        Math.round(bearing),
-      acc,
-      updatedAt: now
+  const token = window.AventraAuth?.getToken?.();
+  if (!token) return;
+  fetch(`${window.AventraAuth.getApiBase()}/.netlify/functions/location-update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      action: 'set',
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      acc
     })
-    .catch(
-      e =>
-        console.error(
-          'liveLocation write:',
-          e
-        )
-    );
+  }).then(async response => {
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || 'Lokasi gagal dikirim.');
+    }
+  }).catch(error => console.error('Pembaruan lokasi murid gagal:', error));
 }
 
 function clearLiveLocation() {
@@ -3213,24 +3479,16 @@ function clearLiveLocation() {
     return;
   }
 
-  const classId =
-    getActiveClassId(
-      session
-    );
-
-  if (!classId) {
-    return;
-  }
-
-  const liveLocationDocId =
-    `${classId}__${buildSafeStudentKey(
-      session.name
-    )}`;
-
-  db.collection('liveLocation')
-    .doc(liveLocationDocId)
-    .delete()
-    .catch(() => {});
+  const token = window.AventraAuth?.getToken?.();
+  if (!token) return;
+  fetch(`${window.AventraAuth.getApiBase()}/.netlify/functions/location-update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ action: 'delete' })
+  }).catch(() => {});
 }
 
 function stopGeoWatch(
@@ -3738,6 +3996,8 @@ function updateGeoPanels(
       : 'none';
 
   if (isAdmin) {
+    initGeoMap();
+    setTimeout(() => geoMap?.invalidateSize(), 100);
     geoStudentBox.style.display =
       'none';
 
