@@ -928,24 +928,24 @@ function paintAbsensi(date, session) {
                   b.disabled = true
               );
 
+              let result;
               try {
-                const result =
-                  await saveAttendanceWithOfflineQueue(
-                    {
-                      date,
-                      studentName:
-                        student.name,
-                      status:
-                        turningOn
-                          ? status
-                          : null,
-                      action:
-                        turningOn
-                          ? 'set'
-                          : 'delete'
-                    }
-                  );
+                result = await saveAttendanceWithOfflineQueue({
+                  date,
+                  studentName: student.name,
+                  status: turningOn ? status : null,
+                  action: turningOn ? 'set' : 'delete'
+                });
+              } catch (e) {
+                console.error('Gagal menyimpan absensi:', e);
+                alert(
+                  'Gagal menyimpan absensi. Data tidak diubah menjadi Alpa. Coba lagi saat koneksi tersedia.'
+                );
+                btnGroup.forEach(b => b.disabled = readOnly);
+                return;
+              }
 
+              try {
                 paintAbsensi(
                   date,
                   currentSessionInfo()
@@ -1000,17 +1000,13 @@ function paintAbsensi(date, session) {
                   flashSaved(date);
                 }
               } catch (e) {
-                console.error(e);
-
-                alert(
-                  'Gagal menyimpan absensi. Data tidak diubah menjadi Alpa. Coba lagi saat koneksi tersedia.'
+                console.error(
+                  'Absensi tersimpan, tetapi tampilan gagal diperbarui:',
+                  e
                 );
-
-                btnGroup.forEach(
-                  b =>
-                    b.disabled =
-                      readOnly
-                );
+                absenNote.textContent =
+                  'Absensi tersimpan. Muat ulang halaman jika status belum terlihat.';
+                absenNote.classList.add('show');
               }
             }
           );
@@ -3114,6 +3110,12 @@ let geoMap = null;
 let geoMarker = null;
 let geoCircle = null;
 let geoLiveLayer = null;
+let geoWatchId = null;
+let geoFirstFixTimer = null;
+let geoInsideSince = null;
+let geoOutsideStreak = 0;
+let geoCountdownTimer = null;
+let geoLastLiveWriteTs = 0;
 
 geoRadiusInput.addEventListener('input', () => {
   const radius = Number(geoRadiusInput.value);
