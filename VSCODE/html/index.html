@@ -187,8 +187,13 @@
 
     <div class="login-tabs">
       <button type="button" class="login-tab active" data-mode="student">Murid</button>
-      <button type="button" class="login-tab" data-mode="admin">Admin</button>
       <button type="button" class="login-tab" data-mode="guru">Guru</button>
+    </div>
+
+    <div id="loginStaffChoices" class="login-staff-choices" style="display:none;">
+      <p>Pilih jenis akses untuk melanjutkan.</p>
+      <button type="button" class="login-staff-choice" data-staff-mode="guru">Masuk sebagai Guru</button>
+      <button type="button" class="login-staff-choice secondary" data-staff-mode="admin">Masuk sebagai Admin</button>
     </div>
 
     <div id="loginFormStudent">
@@ -203,6 +208,7 @@
     </div>
 
     <div id="loginFormAdmin" style="display:none;">
+      <button type="button" class="login-sub-back" data-back-staff>← Kembali ke pilihan akses</button>
       <div class="login-field">
         <label for="loginAdminAccount">Akun Admin</label>
         <select id="loginAdminAccount" autocomplete="off">
@@ -218,6 +224,7 @@
     </div>
 
     <div id="loginFormGuru" style="display:none;">
+      <button type="button" class="login-sub-back" data-back-staff>← Kembali ke pilihan akses</button>
       <div class="login-field">
         <label for="loginGuruPass">Password Guru</label>
         <input type="password" id="loginGuruPass" autocomplete="off" placeholder="••••••••">

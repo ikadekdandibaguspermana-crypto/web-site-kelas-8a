@@ -28,6 +28,7 @@
   const loginFormStudent = document.getElementById('loginFormStudent');
   const loginFormAdmin = document.getElementById('loginFormAdmin');
   const loginFormGuru = document.getElementById('loginFormGuru');
+  const loginStaffChoices = document.getElementById('loginStaffChoices');
 
   const loginName = document.getElementById('loginName');
   const loginPin = document.getElementById('loginPin');
@@ -333,7 +334,7 @@
     mode = newMode;
 
     if (classSelection) {
-      classSelection.style.display = mode === 'admin' ? 'none' : '';
+      classSelection.style.display = mode === 'student' ? '' : 'none';
     }
 
     loginFormStudent.style.display =
@@ -351,12 +352,17 @@
         ? ''
         : 'none';
 
+    if (loginStaffChoices) {
+      loginStaffChoices.style.display = mode === 'staff' ? '' : 'none';
+    }
+    loginSubmit.style.display = mode === 'staff' ? 'none' : '';
+
     loginError.textContent = '';
 
     loginTabs.forEach((tab) => {
       tab.classList.toggle(
         'active',
-        tab.getAttribute('data-mode') === mode
+        tab.getAttribute('data-mode') === (mode === 'student' ? 'student' : 'guru')
       );
     });
 
@@ -368,6 +374,10 @@
 
       loginSub.textContent =
         'Masukkan password admin.';
+
+    } else if (mode === 'staff') {
+      loginTitle.textContent = 'Pilih jenis akses';
+      loginSub.textContent = 'Lanjutkan sebagai Guru atau Admin.';
 
     } else if (mode === 'guru') {
 
@@ -389,6 +399,8 @@
 
 
   async function doLogin() {
+
+    if (mode === 'staff') return;
 
     loginError.textContent = '';
 
@@ -682,13 +694,22 @@
       'click',
       () => {
 
-        setMode(
-          tab.getAttribute('data-mode')
-        );
+        const selectedMode = tab.getAttribute('data-mode');
+        setMode(selectedMode === 'guru' ? 'staff' : 'student');
 
       }
     );
 
+  });
+
+  document.querySelectorAll('[data-staff-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      setMode(button.getAttribute('data-staff-mode'));
+    });
+  });
+
+  document.querySelectorAll('[data-back-staff]').forEach((button) => {
+    button.addEventListener('click', () => setMode('staff'));
   });
 
   gateCardMasuk.addEventListener(

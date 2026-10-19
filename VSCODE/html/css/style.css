@@ -1101,6 +1101,26 @@
 .login-tab.active{ background:var(--gold); color:var(--bg-void); font-weight:600; }
 .login-tab:hover:not(.active){ color:var(--text-hi); }
 
+.login-staff-choices{ display:grid; gap:10px; margin:0 0 18px; }
+.login-staff-choices p{ margin:0 0 4px; text-align:center; color:var(--text-mid); font-size:13px; }
+.login-staff-choice{
+  width:100%; border:1px solid var(--gold); border-radius:12px; padding:12px;
+  background:var(--gold); color:var(--bg-void); font-family:var(--font-display);
+  font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s ease;
+}
+.login-staff-choice:hover{ transform:translateY(-1px); background:var(--gold-soft); }
+.login-staff-choice.secondary{ background:transparent; color:var(--text-hi); border-color:var(--line-soft); }
+.login-staff-choice.secondary:hover{ color:var(--gold); border-color:var(--gold); }
+.login-sub-back{
+  display:block; margin:0 0 14px; padding:0; border:0; background:none;
+  color:var(--text-low); font-family:var(--font-mono); font-size:11.5px; cursor:pointer;
+}
+.login-sub-back:hover{ color:var(--gold); }
+.login-field select#loginAdminAccount{
+  width:100%; border:1px solid var(--line-soft); border-radius:12px; padding:12px 14px;
+  background:var(--bg-void); color:var(--text-hi); font:14px var(--font-body);
+}
+
 .gate-back-btn{
     display:block; margin:0 0 14px; background:none; border:none; color:var(--text-low);
     font-family:var(--font-mono); font-size:11.5px; cursor:pointer; padding:0;
