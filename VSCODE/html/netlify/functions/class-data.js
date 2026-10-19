@@ -51,8 +51,13 @@ exports.handler = async event => {
     return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Permintaan tidak valid.' }) };
   }
 
-  const classId = session.classId;
-  if (!/^[7-9][A-J]$/.test(classId || '')) {
+  const action = String(body.action || '');
+  const requestedClassId = String(body.classId || '').trim();
+  const classId = session.role === 'admin' ? requestedClassId : session.classId;
+  const classScopedActions = new Set([
+    'save-announcement', 'delete-announcement', 'save-agenda', 'save-schedule', 'roster'
+  ]);
+  if (classScopedActions.has(action) && !/^[7-9][A-J]$/.test(classId || '')) {
     return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas aktif tidak ditemukan di sesi.' }) };
   }
 
@@ -71,6 +76,25 @@ exports.handler = async event => {
         classId, text, authorName: session.name,
         createdAt: FieldValue.serverTimestamp(), createdAtMs
       });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (body.action === 'delete-announcement') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat menghapus pengumuman.' }) };
+      }
+      const announcementId = typeof body.announcementId === 'string'
+        ? body.announcementId.trim()
+        : '';
+      if (!announcementId || announcementId.length > 150 || announcementId.includes('/')) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'ID pengumuman tidak valid.' }) };
+      }
+      const announcementRef = db.collection('pengumuman').doc(announcementId);
+      const announcement = await announcementRef.get();
+      if (!announcement.exists || announcement.data()?.classId !== classId) {
+        return { statusCode: 404, headers, body: JSON.stringify({ ok: false, error: 'Pengumuman tidak ditemukan di kelas yang sedang dipilih.' }) };
+      }
+      await announcementRef.delete();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
@@ -151,16 +175,23 @@ exports.handler = async event => {
       if (session.role !== 'admin') {
         return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat melihat lokasi aktif.' }) };
       }
+      const locationScope = requestedClassId || 'ALL';
+      if (locationScope !== 'ALL' && !/^[7-9][A-J]$/.test(locationScope)) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Filter kelas lokasi tidak valid.' }) };
+      }
       const cutoff = Date.now() - 10 * 60 * 1000;
-      const snapshot = await db.collection('liveLocationPrivate')
-        .where('classId', '==', classId)
-        .limit(300)
-        .get();
+      let query = db.collection('liveLocationPrivate');
+      if (locationScope === 'ALL') query = query.where('updatedAt', '>=', cutoff);
+      else query = query.where('classId', '==', locationScope);
+      const resultLimit = locationScope === 'ALL' ? 1001 : 301;
+      const snapshot = await query.limit(resultLimit).get();
+      const truncated = snapshot.docs.length >= resultLimit;
       const locations = snapshot.docs
         .map(doc => {
           const data = doc.data();
           return {
             name: typeof data.name === 'string' ? data.name : 'Murid',
+            classId: typeof data.classId === 'string' ? data.classId : '',
             lat: Number(data.lat),
             lng: Number(data.lng),
             dist: Number(data.dist),
@@ -172,9 +203,10 @@ exports.handler = async event => {
           item.lat >= -90 && item.lat <= 90 && item.lng >= -180 && item.lng <= 180 &&
           Number.isFinite(item.dist) && item.dist >= 0 &&
           Number.isFinite(item.acc) && item.acc >= 0 &&
-          Number.isFinite(item.updatedAt) && item.updatedAt >= cutoff)
+          Number.isFinite(item.updatedAt) && item.updatedAt >= cutoff &&
+          (locationScope === 'ALL' || item.classId === locationScope))
         .sort((a, b) => b.updatedAt - a.updatedAt);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, classId, locations }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, classId: locationScope, locations, truncated }) };
     }
 
     if (body.action === 'geofence') {

@@ -31,6 +31,7 @@
 
   const loginName = document.getElementById('loginName');
   const loginPin = document.getElementById('loginPin');
+  const loginAdminAccount = document.getElementById('loginAdminAccount');
   const loginAdminPass = document.getElementById('loginAdminPass');
   const loginGuruPass = document.getElementById('loginGuruPass');
 
@@ -41,6 +42,8 @@
   const loginSub = document.getElementById('loginSub');
 
   const classSelection = document.getElementById('classSelection');
+  const adminClassControls = document.getElementById('adminClassControls');
+  const adminClassSelect = document.getElementById('adminClassSelect');
   const gradeCards = document.querySelectorAll('.grade-card');
 
   const classListSection = document.getElementById('classListSection');
@@ -65,11 +68,47 @@
     document.getElementById('logoutBtn');
 
   const SESSION_KEY = 'aventra_session';
+  const ADMIN_CLASS_KEY = 'aventra_admin_class';
 
   let mode = 'student';
 
   let selectedGrade = null;
   let selectedClassId = null;
+
+  function setAdminClassId(classId, notify = true) {
+    const value = /^[7-9][A-J]$/.test(String(classId || ''))
+      ? String(classId)
+      : '';
+    if (value) sessionStorage.setItem(ADMIN_CLASS_KEY, value);
+    else sessionStorage.removeItem(ADMIN_CLASS_KEY);
+    if (adminClassSelect) adminClassSelect.value = value;
+    if (notify) {
+      document.dispatchEvent(new CustomEvent('aventra:class-change', {
+        detail: { classId: value || null }
+      }));
+    }
+    return value || null;
+  }
+
+  if (adminClassSelect) {
+    for (const grade of [7, 8, 9]) {
+      const group = document.createElement('optgroup');
+      group.label = `Kelas ${grade}`;
+      for (const letter of 'ABCDEFGHIJ') {
+        const option = document.createElement('option');
+        option.value = `${grade}${letter}`;
+        option.textContent = `Kelas ${grade}${letter}`;
+        group.appendChild(option);
+      }
+      adminClassSelect.appendChild(group);
+    }
+  }
+
+  if (adminClassSelect) {
+    adminClassSelect.addEventListener('change', () => {
+      setAdminClassId(adminClassSelect.value);
+    });
+  }
 
 
   function renderClassButtons(grade) {
@@ -240,6 +279,13 @@
 
     loginGate.style.display = 'none';
 
+    if (adminClassControls) {
+      adminClassControls.hidden = session.role !== 'admin';
+    }
+    if (adminClassSelect && session.role === 'admin') {
+      adminClassSelect.value = sessionStorage.getItem(ADMIN_CLASS_KEY) || '';
+    }
+
     sessionBadge.style.display = '';
 
     sessionName.textContent =
@@ -276,6 +322,8 @@
 
     sessionBadge.style.display = 'none';
 
+    if (adminClassControls) adminClassControls.hidden = true;
+
     showLanding();
   }
 
@@ -283,6 +331,10 @@
 
   function setMode(newMode) {
     mode = newMode;
+
+    if (classSelection) {
+      classSelection.style.display = mode === 'admin' ? 'none' : '';
+    }
 
     loginFormStudent.style.display =
       mode === 'student'
@@ -372,9 +424,9 @@
             ok: true,
             token: 'local-dev-token',
             role: 'admin',
-            accountId: 'admin',
+            accountId: `admin:${loginAdminAccount?.value || 'wiarsayana'}`,
             expiry: Date.now() + 12 * 60 * 60 * 1000,
-            name: 'Admin'
+            name: loginAdminAccount?.selectedOptions?.[0]?.textContent || 'Admin'
           };
 
         }
@@ -497,10 +549,7 @@
       else {
 
 
-        if (
-          (mode === 'student' || mode === 'admin') &&
-          !selectedClassId
-        ) {
+        if (mode === 'student' && !selectedClassId) {
 
           loginError.textContent =
             'Pilih tingkat dan kelas yang akan digunakan terlebih dahulu.';
@@ -516,11 +565,11 @@
                 type:
                   'admin',
 
-                password:
-                  loginAdminPass.value,
+                adminId:
+                  loginAdminAccount?.value || '',
 
-                classId:
-                  selectedClassId
+                password:
+                  loginAdminPass.value
               }
 
             : {
@@ -575,6 +624,8 @@
         data.firebaseCustomToken
       );
 
+      if (data.role === 'admin') setAdminClassId(null, false);
+
       saveSession(data);
 
       showApp(data);
@@ -607,6 +658,7 @@
   [
     loginName,
     loginPin,
+    loginAdminAccount,
     loginAdminPass,
     loginGuruPass
   ].forEach((el) => {
@@ -674,6 +726,7 @@
       );
 
       clearSession();
+      setAdminClassId(null, false);
 
       try {
         await firebaseAuth.signOut();
@@ -731,6 +784,16 @@
 
     getRole: () =>
       (getSession() || {}).role || null,
+
+    getSelectedClassId: () => {
+      const session = getSession();
+      if (session?.role === 'admin') {
+        return sessionStorage.getItem(ADMIN_CLASS_KEY) || null;
+      }
+      return session?.classId || null;
+    },
+
+    setAdminClassId,
 
     setMode
   };

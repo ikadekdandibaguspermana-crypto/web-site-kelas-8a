@@ -74,6 +74,24 @@ function renderClassAnnouncements(docs, classId) {
       meta.textContent = metaText;
       body.appendChild(meta);
     }
+    if (currentSessionInfo().role === 'admin') {
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'pu-del';
+      deleteButton.textContent = 'Hapus';
+      deleteButton.setAttribute('aria-label', `Hapus pengumuman kelas ${classId}`);
+      deleteButton.addEventListener('click', async () => {
+        if (!window.confirm(`Hapus pengumuman ini dari kelas ${classId}? Tindakan ini tidak dapat dibatalkan.`)) return;
+        deleteButton.disabled = true;
+        try {
+          await sendClassInfoAction('delete-announcement', { announcementId: item.id });
+        } catch (error) {
+          window.alert(error.message || 'Pengumuman gagal dihapus.');
+          deleteButton.disabled = false;
+        }
+      });
+      body.appendChild(deleteButton);
+    }
     card.append(dot, body);
     list.appendChild(card);
   });
@@ -214,6 +232,10 @@ function renderClassSchedule(snapshot, classId) {
 async function sendClassInfoAction(action, payload) {
   const token = window.AventraAuth?.getToken?.();
   if (!token) throw new Error('Sesi login tidak ditemukan. Masuk kembali.');
+  const classId = getActiveClassId();
+  if (!classId || !/^[7-9][A-J]$/.test(classId)) {
+    throw new Error('Pilih kelas terlebih dahulu.');
+  }
   const response = await fetch(
     `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
     {
@@ -222,7 +244,7 @@ async function sendClassInfoAction(action, payload) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ action, ...payload })
+      body: JSON.stringify({ action, classId, ...payload })
     }
   );
   const result = await response.json().catch(() => ({}));
@@ -249,8 +271,9 @@ function setupClassInfoComposer(session) {
   const isAdmin = session?.role === 'admin';
   const announcementComposer = document.getElementById('pengumumanComposer');
   const agendaComposer = document.getElementById('agendaComposer');
-  if (announcementComposer) announcementComposer.style.display = isAdmin ? '' : 'none';
-  if (agendaComposer) agendaComposer.style.display = isAdmin ? '' : 'none';
+  const classSelected = Boolean(getActiveClassId(session));
+  if (announcementComposer) announcementComposer.style.display = isAdmin && classSelected ? '' : 'none';
+  if (agendaComposer) agendaComposer.style.display = isAdmin && classSelected ? '' : 'none';
 
   const announcementButton = document.getElementById('pengumumanSubmit');
   if (announcementButton) {
@@ -262,7 +285,7 @@ function setupClassInfoComposer(session) {
       try {
         await sendClassInfoAction('save-announcement', { text });
         input.value = '';
-        setClassInfoComposerStatus('pengumumanComposer', `Pengumuman untuk ${session.classId} berhasil diterbitkan.`);
+        setClassInfoComposerStatus('pengumumanComposer', `Pengumuman untuk ${getActiveClassId()} berhasil diterbitkan.`);
       } catch (error) {
         setClassInfoComposerStatus('pengumumanComposer', error.message || 'Pengumuman gagal disimpan.', true);
       } finally {
@@ -284,7 +307,7 @@ function setupClassInfoComposer(session) {
         document.getElementById('agendaTitleInput').value = '';
         document.getElementById('agendaDateInput').value = '';
         document.getElementById('agendaNoteInput').value = '';
-        setClassInfoComposerStatus('agendaComposer', `Agenda untuk ${session.classId} berhasil ditambahkan.`);
+        setClassInfoComposerStatus('agendaComposer', `Agenda untuk ${getActiveClassId()} berhasil ditambahkan.`);
       } catch (error) {
         setClassInfoComposerStatus('agendaComposer', error.message || 'Agenda gagal disimpan.', true);
       } finally {
@@ -299,9 +322,12 @@ function startClassInfoListeners(session) {
   setupClassInfoComposer(session);
   const classId = getActiveClassId(session);
   if (!classId || !/^[7-9][A-J]$/.test(classId)) {
-    showClassInfoState('pengumumanList', 'Masuk dengan kelas yang valid untuk melihat pengumuman.');
-    showClassInfoState('agendaList', 'Masuk dengan kelas yang valid untuk melihat agenda.');
-    showClassInfoState('jadwalGrid', 'Masuk dengan kelas yang valid untuk melihat jadwal.');
+    const message = session?.role === 'admin'
+      ? 'Pilih angkatan dan kelas pada panel Admin untuk melihat data kelas.'
+      : 'Masuk dengan kelas yang valid untuk melihat data kelas.';
+    showClassInfoState('pengumumanList', message);
+    showClassInfoState('agendaList', message);
+    showClassInfoState('jadwalGrid', message);
     return;
   }
   const bindList = (collectionName, renderer, elementId, label) => {
@@ -370,6 +396,18 @@ document.addEventListener(
   }
 );
 
+document.addEventListener('aventra:class-change', () => {
+  if (currentSessionInfo().role !== 'admin') return;
+  stopAttendanceListener();
+  attendanceLoadSequence++;
+  currentDayData = {};
+  kelasLengkap = [];
+  renderRosterGrid([]);
+  if (absenList) absenList.replaceChildren();
+  startClassInfoListeners(currentSessionInfo());
+  initializeAttendance(currentSessionInfo());
+});
+
 document.addEventListener(
   'aventra:logout',
   () => {
@@ -393,6 +431,10 @@ document.addEventListener(
 
 function getActiveClassId(session) {
   const s = session || currentSessionInfo();
+
+  if (s.role === 'admin') {
+    return window.AventraAuth?.getSelectedClassId?.() || null;
+  }
 
   if (s.classId) {
     return s.classId;
@@ -568,6 +610,30 @@ let currentDayData = {};
 let attendanceUnsubscribe = null;
 let attendanceLoadSequence = 0;
 let adminLocationTimer = null;
+let adminLocationMonitoring = false;
+let adminLocationRequestInFlight = false;
+let adminLocationRefreshPending = false;
+let lastAdminLocations = [];
+const geoLocationClassFilter = document.getElementById('geoLocationClassFilter');
+const adminLocationToggle = document.getElementById('adminLocationToggle');
+
+if (geoLocationClassFilter) {
+  for (const grade of [7, 8, 9]) {
+    const group = document.createElement('optgroup');
+    group.label = `Kelas ${grade}`;
+    for (const letter of 'ABCDEFGHIJ') {
+      const option = document.createElement('option');
+      option.value = `${grade}${letter}`;
+      option.textContent = `Kelas ${grade}${letter}`;
+      group.appendChild(option);
+    }
+    geoLocationClassFilter.appendChild(group);
+  }
+  geoLocationClassFilter.addEventListener('change', () => {
+    if (adminLocationMonitoring) refreshAdminLocations();
+    else renderAdminLocations(lastAdminLocations, false);
+  });
+}
 
 function findStudentByName(typed) {
   const clean = String(typed || '')
@@ -613,7 +679,7 @@ function currentSessionInfo() {
     return {
       role: 'admin',
       name: 'Admin',
-      classId: s.classId || null,
+      classId: window.AventraAuth?.getSelectedClassId?.() || null,
       teacherId: s.teacherId || null
     };
   }
@@ -764,7 +830,9 @@ async function tryLoadRosterFromFirestore() {
   currentDayData = {};
 
   if (!classId || !token) {
-    showAttendanceLoadError('Kelas aktif tidak ditemukan. Keluar lalu pilih kelas dan masuk kembali.');
+    showAttendanceLoadError(session.role === 'admin'
+      ? 'Pilih kelas pada panel Admin untuk memuat roster dan absensi.'
+      : 'Kelas aktif tidak ditemukan. Keluar lalu pilih kelas dan masuk kembali.');
     return;
   }
 
@@ -777,7 +845,7 @@ async function tryLoadRosterFromFirestore() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ action: 'roster' })
+        body: JSON.stringify({ action: 'roster', classId })
       }
     );
     const result = await response.json();
@@ -3521,16 +3589,98 @@ function stopAdminLocationMonitor() {
     clearInterval(adminLocationTimer);
     adminLocationTimer = null;
   }
+  adminLocationMonitoring = false;
+  adminLocationRequestInFlight = false;
+  adminLocationRefreshPending = false;
+  lastAdminLocations = [];
+  if (adminLocationToggle) {
+    adminLocationToggle.setAttribute('aria-pressed', 'false');
+    adminLocationToggle.textContent = 'Mulai pantau semua kelas';
+  }
   if (geoLiveLayer) geoLiveLayer.clearLayers();
   const list = document.getElementById('geoLiveLocationList');
-  if (list) list.textContent = '';
+  if (list) list.textContent = 'Pemantauan lokasi sedang berhenti.';
+}
+
+function renderAdminLocations(locations, truncated = false) {
+  const list = document.getElementById('geoLiveLocationList');
+  if (!list) return;
+  list.replaceChildren();
+  if (geoLiveLayer) geoLiveLayer.clearLayers();
+
+  const selectedClass = geoLocationClassFilter?.value || 'ALL';
+  const visible = selectedClass === 'ALL'
+    ? locations
+    : locations.filter(item => item.classId === selectedClass);
+
+  if (!locations.length) {
+    list.textContent = 'Belum ada laporan lokasi yang cukup baru. Ini tidak berarti murid tidak hadir; GPS mungkin belum diaktifkan atau koneksinya terputus.';
+    return;
+  }
+  if (!visible.length) {
+    list.textContent = selectedClass === 'ALL'
+      ? 'Belum ada laporan lokasi baru untuk kelas mana pun.'
+      : `Belum ada laporan lokasi baru dari kelas ${selectedClass}.`;
+    return;
+  }
+
+  const radius = Number(geofenceSettings?.radius) || 120;
+  if (selectedClass === 'ALL') {
+    const groups = new Map();
+    visible.forEach(item => {
+      const classId = /^[7-9][A-J]$/.test(item.classId || '') ? item.classId : 'Kelas tidak dikenal';
+      if (!groups.has(classId)) groups.set(classId, { total: 0, inside: 0, outside: 0, uncertain: 0 });
+      const group = groups.get(classId);
+      group.total++;
+      if (item.dist + item.acc <= radius) group.inside++;
+      else if (item.dist - item.acc > radius) group.outside++;
+      else group.uncertain++;
+    });
+    [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).forEach(([classId, counts]) => {
+      const row = document.createElement('div');
+      row.className = 'geo-live-location-row';
+      row.textContent = `${classId} · ${counts.total} laporan baru · di dalam radius ${counts.inside} · di luar ${counts.outside} · belum pasti ${counts.uncertain}`;
+      list.appendChild(row);
+    });
+    const hint = document.createElement('p');
+    hint.textContent = 'Ringkasan hanya menghitung HP yang mengirim laporan GPS dalam 10 menit terakhir. Pilih kelas pada filter untuk melihat nama dan titiknya di peta.';
+    list.appendChild(hint);
+  } else {
+    visible.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'geo-live-location-row';
+      const ageSeconds = Math.max(0, Math.floor((Date.now() - item.updatedAt) / 1000));
+      const ageLabel = ageSeconds < 60 ? `${ageSeconds} dtk lalu` : `${Math.floor(ageSeconds / 60)} mnt lalu`;
+      const areaState = item.dist + item.acc <= radius
+        ? 'di dalam radius'
+        : item.dist - item.acc > radius ? 'di luar radius' : 'posisi belum pasti';
+      row.textContent = `${item.name} · ${areaState} · ${Math.round(item.dist)} m dari sekolah · akurasi ±${Math.round(item.acc || 0)} m · ${ageLabel}`;
+      list.appendChild(row);
+      if (geoLiveLayer && window.L) {
+        L.circleMarker([item.lat, item.lng], { radius: 7, color: '#3688ff', fillOpacity: 0.85 })
+          .bindPopup(`${item.name} · ${selectedClass}`)
+          .addTo(geoLiveLayer);
+      }
+    });
+  }
+
+  if (truncated) {
+    const notice = document.createElement('p');
+    notice.textContent = 'Daftar global mencapai batas tampilan. Gunakan filter kelas untuk memeriksa rincian.';
+    list.appendChild(notice);
+  }
 }
 
 async function refreshAdminLocations() {
   const session = currentSessionInfo();
   const rawSession = window.AventraAuth?.getSession?.();
   const list = document.getElementById('geoLiveLocationList');
-  if (session.role !== 'admin' || !rawSession?.token || !list) return;
+  if (!adminLocationMonitoring || document.hidden || session.role !== 'admin' || !rawSession?.token || !list) return;
+  if (adminLocationRequestInFlight) {
+    adminLocationRefreshPending = true;
+    return;
+  }
+  adminLocationRequestInFlight = true;
   try {
     const response = await fetch(
       `${window.AventraAuth.getApiBase()}/.netlify/functions/class-data`,
@@ -3540,34 +3690,25 @@ async function refreshAdminLocations() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${rawSession.token}`
         },
-        body: JSON.stringify({ action: 'locations' })
+        body: JSON.stringify({
+          action: 'locations',
+          classId: geoLocationClassFilter?.value || 'ALL'
+        })
       }
     );
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || 'Lokasi aktif gagal dimuat.');
-    list.replaceChildren();
-    if (geoLiveLayer) geoLiveLayer.clearLayers();
-    if (!result.locations.length) {
-      list.textContent = 'Belum ada lokasi murid yang aktif. Murid perlu membuka absensi dan mengaktifkan GPS.';
-      return;
-    }
-    result.locations.forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'geo-live-location-row';
-      const ageSeconds = Math.max(0, Math.floor((Date.now() - item.updatedAt) / 1000));
-      row.textContent = `${item.name} · ${Math.round(item.dist)} m dari titik sekolah · akurasi ±${Math.round(item.acc || 0)} m · diperbarui ${ageSeconds} dtk lalu`;
-      list.appendChild(row);
-      if (geoLiveLayer && window.L) {
-        L.circleMarker([item.lat, item.lng], {
-          radius: 7,
-          color: '#3688ff',
-          fillOpacity: 0.85
-        }).addTo(geoLiveLayer);
-      }
-    });
+    lastAdminLocations = Array.isArray(result.locations) ? result.locations : [];
+    renderAdminLocations(lastAdminLocations, Boolean(result.truncated));
   } catch (error) {
     console.error('[lokasi Admin]', error);
     list.textContent = error.message || 'Lokasi aktif gagal dimuat.';
+  } finally {
+    adminLocationRequestInFlight = false;
+    if (adminLocationRefreshPending && adminLocationMonitoring && !document.hidden) {
+      adminLocationRefreshPending = false;
+      setTimeout(refreshAdminLocations, 0);
+    }
   }
 }
 
@@ -3575,9 +3716,31 @@ function startAdminLocationMonitor() {
   stopAdminLocationMonitor();
   if (currentSessionInfo().role !== 'admin') return;
   initGeoMap();
-  refreshAdminLocations();
-  adminLocationTimer = setInterval(refreshAdminLocations, 10000);
+  const list = document.getElementById('geoLiveLocationList');
+  if (list) list.textContent = 'Pemantauan berhenti. Admin dapat menekan “Mulai pantau semua kelas” saat perlu.';
 }
+
+if (adminLocationToggle) {
+  adminLocationToggle.addEventListener('click', () => {
+    if (currentSessionInfo().role !== 'admin') return;
+    if (adminLocationMonitoring) {
+      stopAdminLocationMonitor();
+      return;
+    }
+    adminLocationMonitoring = true;
+    adminLocationToggle.setAttribute('aria-pressed', 'true');
+    adminLocationToggle.textContent = 'Hentikan pemantauan';
+    initGeoMap();
+    const list = document.getElementById('geoLiveLocationList');
+    if (list) list.textContent = 'Memuat laporan lokasi yang masih baru…';
+    refreshAdminLocations();
+    adminLocationTimer = setInterval(refreshAdminLocations, 60000);
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (adminLocationMonitoring && !document.hidden) refreshAdminLocations();
+});
 
 geoUseLocationBtn.addEventListener('click', () => {
   if (!navigator.geolocation) {
@@ -3761,7 +3924,7 @@ function broadcastLiveLocation(
 
   if (
     now - geoLastLiveWriteTs <
-    10000
+    60000
   ) {
     return;
   }
@@ -3936,6 +4099,7 @@ function stopPostAbsenWatch() {
     postAbsenWatchId =
       null;
   }
+  clearLiveLocation();
 }
 
 function handlePostAbsenPosition(
@@ -3971,6 +4135,11 @@ function handlePostAbsenPosition(
   const radius =
     geofenceSettings.radius ||
     120;
+
+  const acc = Math.round(pos.coords.accuracy || 0);
+  // Keep the voluntary live-location report available after GPS check-in so
+  // the Admin can see fresh movement while the page remains active.
+  broadcastLiveLocation(pos, dist, acc);
 
   if (
     dist > radius

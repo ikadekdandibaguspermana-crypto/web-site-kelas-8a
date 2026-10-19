@@ -2,6 +2,13 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const scrypt = promisify(crypto.scrypt);
 
+function safeStringEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left), 'utf8');
+  const rightBuffer = Buffer.from(String(right), 'utf8');
+  return leftBuffer.length === rightBuffer.length &&
+    crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
 const STUDENT_PIN_SCRYPT = {
   N: 16384,
   r: 8,
@@ -175,13 +182,42 @@ exports.handler = async (event) => {
     let accountId = null;
 
     if (type === 'admin') {
-      const adminPassword =
-        process.env.ADMIN_PASSWORD || '';
+      const adminAccounts = {
+        wiarsayana: {
+          name: 'I Putu Wiarsayana',
+          password: process.env.ADMIN_PASSWORD_WIARSAYANA || ''
+        },
+        dandi: {
+          name: 'I Kadek Dandi Bagus Permana',
+          password: process.env.ADMIN_PASSWORD_DANDI || ''
+        },
+        aksha: {
+          name: 'Putu Aksha Raka',
+          password: process.env.ADMIN_PASSWORD_AKSHA || ''
+        }
+      };
+      const adminId = String(payload.adminId || '').trim();
+      const adminAccount = adminAccounts[adminId];
+
+      if (!adminAccount) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ ok: false, error: 'Pilih akun Admin yang valid.' })
+        };
+      }
+
+      if (!adminAccount.password) {
+        return {
+          statusCode: 503,
+          headers: corsHeaders,
+          body: JSON.stringify({ ok: false, error: 'Akun Admin ini belum dikonfigurasi di Netlify.' })
+        };
+      }
 
       if (
         !password ||
-        !adminPassword ||
-        password !== adminPassword
+        !safeStringEqual(password, adminAccount.password)
       ) {
         return {
           statusCode: 401,
@@ -193,21 +229,12 @@ exports.handler = async (event) => {
         };
       }
 
-      if (!/^[7-9][A-J]$/.test(requestedClassId)) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({
-            ok: false,
-            error: 'Pilih kelas yang akan dikelola.'
-          })
-        };
-      }
-
       role = 'admin';
-      displayName = 'Admin';
-      accountId = 'admin';
-      finalClassId = requestedClassId;
+      displayName = adminAccount.name;
+      accountId = `admin:${adminId}`;
+      // Admin chooses a class after login; the signed session grants the
+      // admin role while class-scoped requests are validated separately.
+      finalClassId = null;
     }
 
     else if (type === 'student') {

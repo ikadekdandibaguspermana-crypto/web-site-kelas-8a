@@ -92,7 +92,7 @@ exports.handler = async event => {
       return { statusCode: 409, headers, body: JSON.stringify({ ok: false, error: 'Lokasi sekolah belum diatur Admin.' }) };
     }
     const previous = await locationRef.get();
-    if (previous.exists && Date.now() - Number(previous.data().updatedAt || 0) < 7000) {
+    if (previous.exists && Date.now() - Number(previous.data().updatedAt || 0) < 45000) {
       return { statusCode: 429, headers, body: JSON.stringify({ ok: false, error: 'Pembaruan lokasi terlalu sering. Tunggu sebentar.' }) };
     }
     const geofence = settings.data();

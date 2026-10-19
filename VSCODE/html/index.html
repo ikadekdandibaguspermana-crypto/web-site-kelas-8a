@@ -204,6 +204,14 @@
 
     <div id="loginFormAdmin" style="display:none;">
       <div class="login-field">
+        <label for="loginAdminAccount">Akun Admin</label>
+        <select id="loginAdminAccount" autocomplete="off">
+          <option value="wiarsayana">I Putu Wiarsayana</option>
+          <option value="dandi">I Kadek Dandi Bagus Permana</option>
+          <option value="aksha">Putu Aksha Raka</option>
+        </select>
+      </div>
+      <div class="login-field">
         <label for="loginAdminPass">Password Admin</label>
         <input type="password" id="loginAdminPass" autocomplete="off" placeholder="••••••••">
       </div>
@@ -224,6 +232,17 @@
 <div class="session-badge" id="sessionBadge" style="display:none;">
   <span>Masuk sebagai <b id="sessionName">-</b></span>
   <button id="logoutBtn">Keluar</button>
+</div>
+
+<div class="admin-class-controls" id="adminClassControls" hidden>
+  <div>
+    <h3>Pantau kelas</h3>
+    <p>Pilih kelas untuk membuka roster dan data kelas. Pemantauan lokasi semua kelas dapat diaktifkan terpisah.</p>
+  </div>
+  <label for="adminClassSelect">Kelas yang dibuka</label>
+  <select id="adminClassSelect" class="absen-date">
+    <option value="">Pilih kelas…</option>
+  </select>
 </div>
 
 <div class="nav-wrap" id="navWrap">
@@ -372,7 +391,14 @@
     <div id="geoMapContainer" style="height:280px;border-radius:12px;margin-bottom:12px;overflow:hidden;"></div>
     <div class="geo-live-monitor">
       <h4>Lokasi Murid Aktif</h4>
-      <p>Peta dan daftar diperbarui berkala selama murid mengaktifkan GPS di halaman absensi.</p>
+      <p>Hanya laporan GPS yang dikirim saat murid mengaktifkan fitur di halaman absensi. Laporan terbaru dimuat sekitar setiap 60 detik; ini bukan bukti pasti kehadiran.</p>
+      <div class="geo-admin-actions">
+        <button class="btn-add" id="adminLocationToggle" type="button" aria-pressed="false">Mulai pantau semua kelas</button>
+        <label for="geoLocationClassFilter">Rincian lokasi</label>
+        <select id="geoLocationClassFilter" class="absen-date">
+          <option value="ALL">Ringkasan semua kelas</option>
+        </select>
+      </div>
       <div id="geoLiveLocationList" aria-live="polite">Belum ada lokasi murid yang aktif.</div>
     </div>
     <div class="geo-admin-row">
