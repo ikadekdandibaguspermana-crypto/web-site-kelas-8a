@@ -138,13 +138,21 @@
     try {
       sessionStorage.setItem('kelas', nama);
       sessionStorage.setItem('tingkat', tingkat);
-    } catch (err) { /* storage diblokir: lanjut saja */ }
+    } catch (err) {}
+
+    if (typeof window.setStudentClass === 'function') {
+      window.setStudentClass(tingkat, nama);
+    } else {
+      console.error('[kelas-step] setStudentClass tidak tersedia');
+      return;
+    }
 
     var card = kartuAsal;
     tutup();
+
     if (card) {
       lolos = true;
-      card.click();   // sekarang handler lama jalan: closeGate() + openLogin()
+      card.click();
     }
   }
 })();

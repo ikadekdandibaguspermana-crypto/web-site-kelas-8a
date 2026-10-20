@@ -76,6 +76,11 @@
   let selectedGrade = null;
   let selectedClassId = null;
 
+  window.setStudentClass = function (grade, classId) {
+  selectedGrade = Number(grade);
+  selectedClassId = String(classId);
+  };
+
   function setAdminClassId(classId, notify = true) {
     const value = /^[7-9][A-J]$/.test(String(classId || ''))
       ? String(classId)
