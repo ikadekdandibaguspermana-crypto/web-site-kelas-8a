@@ -47,4 +47,4 @@ Skrip akan memeriksa konflik ID sebelum menulis. Dokumen yang sudah sama persis 
 **Jangan jalankan perintah impor tulis sebelum meninjau Firestore Rules dan menyetujui perubahan data live.**
 
 
-fuckyou Aksha nanti hapus tolong
+fuckyou Aksha nanti hapus tolong fuck of
