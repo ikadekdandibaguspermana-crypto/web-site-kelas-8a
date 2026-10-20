@@ -53,16 +53,57 @@ exports.handler = async event => {
 
   const action = String(body.action || '');
   const requestedClassId = String(body.classId || '').trim();
-  const classId = session.role === 'admin' ? requestedClassId : session.classId;
+  const classId = session.role === 'admin' || session.role === 'guru' ? requestedClassId : session.classId;
   const classScopedActions = new Set([
-    'save-announcement', 'delete-announcement', 'save-agenda', 'save-schedule', 'roster'
+    'save-announcement', 'delete-announcement', 'save-agenda', 'save-schedule',
+    'roster', 'class-structure', 'save-class-structure'
   ]);
   if (classScopedActions.has(action) && !/^[7-9][A-J]$/.test(classId || '')) {
     return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas aktif tidak ditemukan di sesi.' }) };
   }
+  if (classScopedActions.has(action) && session.role === 'guru' && !session.assignedClasses.includes(classId)) {
+    return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas ini bukan kelas tugas Anda.' }) };
+  }
 
   try {
     const db = getFirestore();
+    if (body.action === 'class-structure') {
+      if (session.role !== 'admin' && session.role !== 'guru' && session.classId !== classId) {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Tidak diizinkan melihat struktur kelas ini.' }) };
+      }
+      if (session.role === 'guru' && !session.assignedClasses.includes(classId)) {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Kelas ini bukan kelas tugas Anda.' }) };
+      }
+      const snapshot = await db.collection('classStructure').doc(classId).get();
+      const data = snapshot.exists ? snapshot.data() : {};
+      const teacherName = typeof data.teacherName === 'string' ? data.teacherName : '';
+      const officers = Array.isArray(data.officers) ? data.officers
+        .filter(item => item && typeof item.name === 'string' && typeof item.role === 'string')
+        .map(item => ({ name: item.name, role: item.role })) : [];
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, classId, structure: { teacherName, officers } }) };
+    }
+
+    if (body.action === 'save-class-structure') {
+      if (session.role !== 'admin') {
+        return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat mengubah struktur kelas.' }) };
+      }
+      const teacherName = typeof body.teacherName === 'string' ? body.teacherName.trim() : '';
+      const officers = body.officers;
+      if (teacherName.length > 120 || !Array.isArray(officers) || officers.length > 20 ||
+          officers.some(item => !item || typeof item.name !== 'string' || typeof item.role !== 'string' ||
+            !item.name.trim() || !item.role.trim() || item.name.trim().length > 120 || item.role.trim().length > 60)) {
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Data wali kelas atau daftar pengurus tidak valid. Maksimal 20 pengurus.' }) };
+      }
+      await db.collection('classStructure').doc(classId).set({
+        classId,
+        teacherName,
+        officers: officers.map(item => ({ name: item.name.trim(), role: item.role.trim() })),
+        updatedAt: Date.now(),
+        updatedBy: session.accountId
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
     if (body.action === 'save-announcement') {
       if (session.role !== 'admin') {
         return { statusCode: 403, headers, body: JSON.stringify({ ok: false, error: 'Hanya Admin yang dapat menerbitkan pengumuman.' }) };

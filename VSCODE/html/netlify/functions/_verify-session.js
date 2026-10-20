@@ -55,6 +55,7 @@ function verifySession(authorizationHeader) {
       accountId: payload.accountId,
       name: payload.name,
       role: payload.role,
+      teacherType: payload.teacherType || null,
       classId: payload.classId || null,
       assignedClasses: Array.isArray(payload.assignedClasses)
         ? payload.assignedClasses

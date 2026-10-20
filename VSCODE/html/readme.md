@@ -13,45 +13,25 @@ tanpa harus membaca ulang semua baris kode dari nol.
 ├── css/
 │   └── style.css       # Semua styling (dark/light theme, layout, animasi)
 ├── js/
-│   ├── config.js       # Password admin & PIN murid (JANGAN di-push ke GitHub)
-│   └── script.js       # Seluruh logika aplikasi (auth, absensi, dsb)
-├── build-config.js      # Auto-generate js/config.js saat build di Netlify
+│   ├── auth.js          # Form login dan sesi pengguna
+│   ├── script.js        # Interaksi halaman, absensi, dan data kelas
+│   └── teacher-directory.js # Daftar guru piket/wali TA 2026/2027
+├── netlify/functions/   # Login, sesi, data kelas, dan pengelolaan akun
 ├── netlify.toml         # Konfigurasi build Netlify
 └── .gitignore            # Mengecualikan js/config.js dari git
 ```
 
-**Urutan load penting:** `config.js` HARUS dimuat sebelum `script.js` di
-`index.html`, karena `script.js` membaca `window.APP_CONFIG` (password admin
-& PIN murid) dari file itu.
+`teacher-directory.js` dimuat sebelum `auth.js` agar pilihan nama guru sudah
+tersedia ketika formulir login disiapkan.
 
 ---
 
-## 2. Cara Kerja Password/PIN & Kenapa Dipisah
+## 2. Password dan keamanan
 
-- `js/config.js` berisi `ADMIN_PASSWORD` dan `studentPins` (mapping nama → PIN 4 digit).
-- File ini **tidak** benar-benar rahasia dari user akhir — karena web ini
-  murni statis (tanpa backend), browser tetap harus mengunduh file ini agar
-  proses login bisa jalan. Siapa pun yang buka DevTools → Sources tetap bisa
-  membacanya.
-- Yang bisa dicapai dengan memisahkan file ini hanyalah: **tidak ikut
-  ter-upload ke GitHub** (lewat `.gitignore`), supaya orang yang cuma lihat
-  repo publik tidak langsung melihat semua password.
-- Alur build otomatis di Netlify (`build-config.js` + `netlify.toml`):
-  1. Password & PIN asli disimpan di **Netlify Environment Variables**
-     (`ADMIN_PASSWORD`, `STUDENT_PINS` dalam format JSON), bukan di GitHub.
-  2. Setiap kali repo di-push ke GitHub, Netlify otomatis menjalankan
-     `node build-config.js`.
-  3. Script itu membaca environment variables lalu menulis ulang
-     `js/config.js` di server build Netlify, sebelum situs di-deploy.
-  4. Hasil akhirnya: file `config.js` yang dikirim ke browser tetap berisi
-     data asli (karena memang harus, untuk login), tapi datanya tidak pernah
-     tersimpan di riwayat git/GitHub.
-
-> Catatan keamanan jujur: ini **bukan** keamanan sungguhan tingkat produksi
-> (misalnya untuk data sensitif beneran). Kalau butuh proteksi password yang
-> benar-benar tidak bisa dibaca dari browser sama sekali, solusinya adalah
-> pindahkan proses cek password ke backend (contoh: Firebase Cloud Function
-> atau Netlify Function) sehingga password tidak pernah dikirim ke client.
+Password Admin disimpan sebagai variabel rahasia Netlify dan diperiksa pada
+Netlify Function. Password guru disimpan sebagai hash scrypt di Firestore dan
+tidak dikirim kembali ke browser. PIN siswa diverifikasi oleh fungsi login.
+Jangan menaruh password atau kunci akun layanan Firebase di kode sumber.
 
 ---
 
@@ -83,22 +63,24 @@ refresh.
 
 ## 4. Sistem Login & Role
 
-Ada 3 role, disimpan di `sessionStorage` (hilang saat tab/browser ditutup):
+Sesi login disimpan di `sessionStorage` (hilang saat tab/browser ditutup).
+Admin memiliki sandi berbeda melalui `ADMIN_PASSWORD_WIARSAYANA`,
+`ADMIN_PASSWORD_DANDI`, dan `ADMIN_PASSWORD_AKSHA`. Nama Admin Kepala Sekolah
+ditampilkan sebagai **I Putu Wiarsayana, S.Pd.B., M.Pd.**
 
-| Role       | Cara login                          | Hak akses                                                                 |
-|------------|--------------------------------------|----------------------------------------------------------------------------|
-| `admin`    | Password admin (`ADMIN_PASSWORD`)    | Akses penuh: semua absensi, rekap bulanan, reset absensi, kelola pengumuman/jadwal/agenda, atur lokasi geofence |
-| `pengurus` | Nama + PIN (harus terdaftar di array `pengurus`) | Sama seperti murid untuk Absensi (hanya bisa tandai dirinya sendiri), TAPI bisa kelola Pengumuman/Jadwal/Agenda |
-| `student`  | Nama + PIN                            | Hanya bisa melihat & menandai absensinya sendiri                          |
+Guru memilih jenis akses (guru piket atau wali/guru wali), nama, dan sandi
+pribadi. Admin menyiapkan atau mengganti sandi melalui panel **Kelola sandi
+login guru**. Sandi disimpan sebagai hash scrypt di dokumen `teachers/{teacherId}`;
+sandi aslinya tidak disimpan di Firestore. Login guru piket dapat memilih kelas
+pantauan. Login wali/guru wali hanya menerima kelas yang tercantum di daftar
+tugas tahun ajaran 2026/2027. Data nama/tugas sumber ada di
+`js/teacher-directory.js`; akun guru perlu diaktifkan Admin sebelum dapat masuk.
 
-Logika penentuan role ada di `doLoginWithExtras()`:
-```js
-const role = pengurusNameSet.has(nama) ? 'pengurus' : 'student';
-```
+Nama yang dicantumkan dalam struktur pengurus kelas tetap tidak otomatis
+memberi role login atau hak akses.
 
 Fungsi penting:
-- `findStudentByName()` — mencocokkan nama yang diketik dengan `kelasLengkap`
-  (gabungan `pengurus` + `roster`).
+- `findStudentByName()` — mencocokkan nama dengan roster kelas yang dimuat.
 - `enterSite()` / `enterSiteWithExtras()` — dipanggil setelah login sukses,
   menampilkan UI sesuai role dan menyalakan semua listener Firestore.
 - `logoutBtn` — **hanya muncul untuk admin**. Murid/pengurus yang sudah login
@@ -115,8 +97,8 @@ Fungsi penting:
 - Klik tombol status (Hadir/Sakit/Izin/Alpa) → `set(..., {merge:true})` ke
   Firestore. Klik status yang sama lagi → `FieldValue.delete()` (menghapus
   statusnya, jadi "belum tercatat").
-- Dropdown bulan (`absenMonthSelect`) dibuat otomatis untuk 50 tahun ke depan
-  (`buildMonthOptions()`), supaya tidak pernah kehabisan pilihan bulan.
+- Pemilih tanggal menentukan tanggal absensi; **Rekap Bulanan** memakai bulan
+  dari tanggal yang sedang dipilih.
 - Ada auto-refresh tengah malam (`setInterval` tiap 60 detik) yang memajukan
   tanggal ke "hari ini" kalau tab dibiarkan terbuka lewat tengah malam.
 
@@ -126,6 +108,16 @@ Fungsi penting:
 - Menghitung total H/S/I/A per murid, lalu menampilkan tabel + tombol
   **Unduh CSV** dan **Unduh PDF** (pakai library `jsPDF` + `jspdf-autotable`,
   di-load dari CDN di `index.html`).
+
+## Struktur Pengurus per Kelas
+
+- Setiap kelas menyimpan satu dokumen `classStructure/{classId}`.
+- Admin memilih kelas aktif, lalu mengisi nama wali kelas dan daftar pengurus
+  dengan jabatan yang dapat berbeda di setiap kelas.
+- Pembacaan melewati fungsi Netlify yang memeriksa sesi dan kelas; penyimpanan
+  hanya diizinkan untuk sesi Admin.
+- Data pengurus hanya untuk tampilan. Data nama tidak memberikan hak login atau
+  hak mengubah pengumuman/agenda.
 
 ---
 
@@ -183,13 +175,15 @@ Ketiganya punya pola yang sama:
 ## 9. Alur Deploy (Netlify)
 
 1. Push kode ke GitHub (tanpa `js/config.js`, sudah di-`.gitignore`).
-2. Di Netlify dashboard → **Site settings → Environment variables**, isi:
-   - `ADMIN_PASSWORD` → password admin asli
-   - `STUDENT_PINS` → JSON string berisi semua PIN murid
-3. Netlify build command (`netlify.toml`): `node build-config.js`
-   → otomatis membuat `js/config.js` dari environment variables tadi
-   sebelum situs di-publish (`publish = "."`).
-4. Setiap push baru ke GitHub akan trigger build ulang otomatis.
+2. Di Netlify dashboard → **Project configuration → Environment variables**,
+   isi sandi Admin (`ADMIN_PASSWORD_WIARSAYANA`, `ADMIN_PASSWORD_DANDI`,
+   `ADMIN_PASSWORD_AKSHA`), `SESSION_SECRET`, dan
+   `FIREBASE_SERVICE_ACCOUNT_KEY`. PIN siswa dikelola lewat data akun siswa di
+   Firestore, bukan variabel `STUDENT_PINS`.
+3. Setelah kode dipush ke GitHub, Netlify akan membangun ulang situs. Untuk
+   menyiapkan login guru, Admin masuk ke situs yang sudah diperbarui, pilih nama
+   pada panel **Kelola sandi login guru**, lalu simpan sandi awal yang akan
+   diberikan langsung kepada guru.
 
 **Kalau butuh update password/PIN:** cukup ubah di Netlify Environment
 Variables, lalu trigger re-deploy (tidak perlu ubah kode).
@@ -198,10 +192,8 @@ Variables, lalu trigger re-deploy (tidak perlu ubah kode).
 
 ## 10. Hal yang Perlu Diketahui Tim (Catatan Penting)
 
-- Password admin & PIN murid **bisa dibaca siapa pun** lewat DevTools browser
-  karena situs ini statis (tanpa backend beneran). Ini bukan bug, tapi
-  batasan arsitektur — sudah dijelaskan di komentar `config.js` & bagian 2
-  dokumen ini.
+- Password Admin dan sandi guru diverifikasi pada Netlify Functions; jangan
+  memasukkan nilainya ke kode atau mengirimkannya di grup umum.
 - Murid yang sudah login **tidak bisa logout sendiri** (tombol logout hanya
   untuk admin) — ini disengaja supaya sesi lebih terkunci per orang.
 - Jangan pernah commit `js/config.js` ke git — sudah ada di `.gitignore`,

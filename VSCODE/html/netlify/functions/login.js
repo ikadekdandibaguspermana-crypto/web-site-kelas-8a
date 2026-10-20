@@ -184,7 +184,7 @@ exports.handler = async (event) => {
     if (type === 'admin') {
       const adminAccounts = {
         wiarsayana: {
-          name: 'I Putu Wiarsayana',
+          name: 'I Putu Wiarsayana, S.Pd.B., M.Pd.',
           password: process.env.ADMIN_PASSWORD_WIARSAYANA || ''
         },
         dandi: {

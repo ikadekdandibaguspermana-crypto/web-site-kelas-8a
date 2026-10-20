@@ -35,6 +35,15 @@
   const loginAdminAccount = document.getElementById('loginAdminAccount');
   const loginAdminPass = document.getElementById('loginAdminPass');
   const loginGuruPass = document.getElementById('loginGuruPass');
+  const loginTeacherType = document.getElementById('loginTeacherType');
+  const loginTeacherId = document.getElementById('loginTeacherId');
+  const teacherAccountAdmin = document.getElementById('teacherAccountAdmin');
+  const teacherAccountSelect = document.getElementById('teacherAccountSelect');
+  const teacherPasswordInput = document.getElementById('teacherPasswordInput');
+  const saveTeacherAccount = document.getElementById('saveTeacherAccount');
+  const teacherAccountStatus = document.getElementById('teacherAccountStatus');
+  const classControlsTitle = document.getElementById('classControlsTitle');
+  const classControlsDescription = document.getElementById('classControlsDescription');
 
   const loginSubmit = document.getElementById('loginSubmit');
   const loginError = document.getElementById('loginError');
@@ -69,7 +78,7 @@
     document.getElementById('logoutBtn');
 
   const SESSION_KEY = 'aventra_session';
-  const ADMIN_CLASS_KEY = 'aventra_admin_class';
+  const ADMIN_CLASS_KEY = 'aventra_active_class';
 
   let mode = 'student';
 
@@ -91,25 +100,80 @@
     return value || null;
   }
 
-  if (adminClassSelect) {
-    for (const grade of [7, 8, 9]) {
-      const group = document.createElement('optgroup');
-      group.label = `Kelas ${grade}`;
-      for (const letter of 'ABCDEFGHIJ') {
-        const option = document.createElement('option');
-        option.value = `${grade}${letter}`;
-        option.textContent = `Kelas ${grade}${letter}`;
-        group.appendChild(option);
-      }
-      adminClassSelect.appendChild(group);
-    }
+  const teacherDirectory = window.AVENTRA_TEACHER_DIRECTORY || { directory: [], classIds: [] };
+  const allClassIds = teacherDirectory.classIds || [];
+  function refillSelect(select, items, placeholder) {
+    if (!select) return;
+    select.replaceChildren(new Option(placeholder, ''));
+    items.forEach(item => select.add(new Option(item.label, item.value)));
   }
+  function populateTeacherLoginOptions() {
+    if (!loginTeacherId) return;
+    const type = loginTeacherType?.value || 'piket';
+    const candidates = teacherDirectory.directory.filter(teacher => teacher.teacherTypes.includes(type));
+    refillSelect(loginTeacherId, candidates.map(teacher => ({ label: teacher.name, value: teacher.id })), 'Pilih nama guru…');
+    if (loginTeacherId.options.length === 2) loginTeacherId.selectedIndex = 1;
+  }
+  function populateClassControls(session) {
+    if (!adminClassSelect) return;
+    const isAdmin = session.role === 'admin';
+    const classes = isAdmin ? allClassIds : (session.role === 'guru' ? session.assignedClasses || [] : []);
+    refillSelect(adminClassSelect, classes.map(classId => ({ label: `Kelas ${classId}`, value: classId })), 'Pilih kelas…');
+    if (classControlsTitle) classControlsTitle.textContent = isAdmin ? 'Pantau kelas' : 'Kelas tugas';
+    if (classControlsDescription) classControlsDescription.textContent = isAdmin
+      ? 'Pilih kelas untuk membuka roster dan data kelas.'
+      : session.teacherType === 'piket'
+        ? 'Pilih kelas yang sedang dipantau hari ini.'
+        : 'Akses dibatasi ke kelas wali/guru wali yang ditugaskan.';
+    const selected = sessionStorage.getItem(ADMIN_CLASS_KEY);
+    const initialClass = classes.includes(selected) ? selected : (classes.includes(session.classId) ? session.classId : classes[0] || '');
+    setAdminClassId(initialClass, false);
+  }
+  function fillTeacherAccountSelect() {
+    if (!teacherAccountSelect) return;
+    refillSelect(teacherAccountSelect, teacherDirectory.directory.map(teacher => ({ label: `${teacher.name} — ${teacher.teacherTypes.map(type => type === 'piket' ? 'Piket' : 'Wali/guru wali').join(', ')}`, value: teacher.id })), 'Pilih guru…');
+  }
+  populateTeacherLoginOptions();
+  fillTeacherAccountSelect();
+  loginTeacherType?.addEventListener('change', populateTeacherLoginOptions);
 
   if (adminClassSelect) {
     adminClassSelect.addEventListener('change', () => {
       setAdminClassId(adminClassSelect.value);
     });
   }
+
+  async function callTeacherAdmin(action, extra = {}) {
+    const session = getSession();
+    const response = await fetch(`${API_BASE}/.netlify/functions/teacher-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
+      body: JSON.stringify({ action, ...extra })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || 'Pengaturan akun guru gagal.');
+    return result;
+  }
+
+  saveTeacherAccount?.addEventListener('click', async () => {
+    teacherAccountStatus.textContent = '';
+    const teacherId = teacherAccountSelect?.value || '';
+    const password = teacherPasswordInput?.value || '';
+    if (!teacherId || password.length < 8 || password.length > 128) {
+      teacherAccountStatus.textContent = 'Pilih guru dan gunakan sandi 8–128 karakter.';
+      return;
+    }
+    saveTeacherAccount.disabled = true;
+    try {
+      await callTeacherAdmin('set-password', { teacherId, password });
+      teacherPasswordInput.value = '';
+      teacherAccountStatus.textContent = 'Sandi tersimpan. Sampaikan sandi ini secara pribadi kepada guru tersebut.';
+    } catch (error) {
+      teacherAccountStatus.textContent = error.message;
+    } finally {
+      saveTeacherAccount.disabled = false;
+    }
+  });
 
 
   function renderClassButtons(grade) {
@@ -216,6 +280,7 @@
     classId,
     assignedClasses,
     teacherId,
+    teacherType,
     studentId,
     accountId,
     firebaseUid,
@@ -252,6 +317,9 @@
         teacherId:
           teacherId ?? null,
 
+        teacherType:
+          teacherType ?? null,
+
         studentId:
           studentId ?? null,
 
@@ -280,12 +348,9 @@
 
     loginGate.style.display = 'none';
 
-    if (adminClassControls) {
-      adminClassControls.hidden = session.role !== 'admin';
-    }
-    if (adminClassSelect && session.role === 'admin') {
-      adminClassSelect.value = sessionStorage.getItem(ADMIN_CLASS_KEY) || '';
-    }
+    if (adminClassControls) adminClassControls.hidden = !['admin', 'guru'].includes(session.role);
+    if (teacherAccountAdmin) teacherAccountAdmin.hidden = session.role !== 'admin';
+    if (['admin', 'guru'].includes(session.role)) populateClassControls(session);
 
     sessionBadge.style.display = '';
 
@@ -324,6 +389,7 @@
     sessionBadge.style.display = 'none';
 
     if (adminClassControls) adminClassControls.hidden = true;
+    if (teacherAccountAdmin) teacherAccountAdmin.hidden = true;
 
     showLanding();
   }
@@ -537,8 +603,9 @@
             },
 
             body: JSON.stringify({
-              password:
-                loginGuruPass.value
+              teacherId: loginTeacherId?.value || '',
+              teacherType: loginTeacherType?.value || 'piket',
+              password: loginGuruPass.value
             })
           }
         );
@@ -672,7 +739,8 @@
     loginPin,
     loginAdminAccount,
     loginAdminPass,
-    loginGuruPass
+    loginGuruPass,
+    loginTeacherId
   ].forEach((el) => {
 
     el.addEventListener(
@@ -808,8 +876,10 @@
 
     getSelectedClassId: () => {
       const session = getSession();
-      if (session?.role === 'admin') {
-        return sessionStorage.getItem(ADMIN_CLASS_KEY) || null;
+      if (session?.role === 'admin' || session?.role === 'guru') {
+        const selected = sessionStorage.getItem(ADMIN_CLASS_KEY) || null;
+        const allowed = session.role === 'admin' ? allClassIds : session.assignedClasses || [];
+        return allowed.includes(selected) ? selected : null;
       }
       return session?.classId || null;
     },

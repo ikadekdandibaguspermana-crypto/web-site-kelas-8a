@@ -318,6 +318,19 @@
   .officer-card .role-tag{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:1.2px; color:var(--text-low); text-transform:uppercase; }
   .officer-card h4{ font-family:var(--font-display); font-size:16px; margin-top:6px; }
 
+  .class-structure-editor{ margin:28px 0 12px; padding:22px; border:1px solid var(--line-soft); border-radius:var(--radius-md); background:var(--bg-panel); }
+  .class-structure-editor[hidden]{ display:none; }
+  .class-structure-editor h3{ margin:0 0 6px; font-family:var(--font-display); }
+  .class-structure-editor>p{ color:var(--text-mid); margin:0 0 16px; }
+  .class-structure-editor label{ display:grid; gap:8px; max-width:520px; margin-bottom:14px; }
+  .class-structure-editor input{ min-width:0; padding:11px 12px; color:var(--text-hi); background:var(--bg-void); border:1px solid var(--line-soft); border-radius:10px; font:inherit; }
+  .class-officer-editor-row{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:10px; margin:10px 0; }
+  .class-structure-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .class-structure-actions button,.class-officer-editor-row button{ padding:10px 14px; border:1px solid var(--line-soft); border-radius:10px; color:var(--text-hi); background:var(--bg-panel-hi); cursor:pointer; }
+  #saveClassStructure{ color:var(--bg-void); background:var(--gold); border-color:var(--gold); }
+  #classStructureEditorStatus{ min-height:1.3em; margin:12px 0 0; color:var(--text-mid); }
+  @media (max-width:620px){ .class-officer-editor-row{ grid-template-columns:1fr; } }
+
   .roster-title{
     display:flex; align-items:center; justify-content:space-between; margin:52px 0 20px;
   }
@@ -347,7 +360,7 @@
   .absen-controls{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:26px;
   }
-  .absen-date, .absen-month{
+  .absen-date{
     background:var(--bg-panel); border:1px solid var(--line-soft); border-radius:12px;
     padding:11px 16px; color:var(--text-hi); font-family:var(--font-mono); font-size:13px;
     color-scheme:dark;
@@ -874,6 +887,14 @@
   .admin-class-controls p{ margin:0; color:var(--text-mid); font-size:12px; }
   .admin-class-controls label,.geo-live-monitor label{ color:var(--text-mid); font-size:12px; }
   .admin-class-controls select{ grid-column:2; grid-row:1 / span 2; width:100%; }
+  .admin-class-controls .teacher-account-admin{ grid-column:1 / -1; width:100%; border-top:1px solid var(--line-soft); padding-top:8px; }
+  .teacher-account-admin summary{ color:var(--gold-soft); cursor:pointer; font-size:12px; font-weight:700; }
+  .teacher-account-admin p{ margin:8px 0; }
+  .teacher-account-admin label{ display:block; margin:8px 0 4px; }
+  .teacher-account-admin select,.teacher-account-admin input{ display:block; grid-column:auto; grid-row:auto; width:100%; }
+  .teacher-account-admin input{ border:1px solid var(--line-soft); border-radius:9px; background:var(--bg-void); padding:9px 11px; color:var(--text-hi); }
+  .teacher-account-admin button{ margin-top:8px; border:1px solid var(--gold); border-radius:9px; background:var(--gold); color:var(--bg-void); padding:9px 12px; cursor:pointer; }
+  .teacher-account-admin button:disabled{ opacity:.6; cursor:wait; }
   #adminLocationToggle[aria-pressed="true"]{ background:#a83b42; border-color:#a83b42; }
   @media (max-width:640px){
     .admin-class-controls{ top:118px; width:calc(100% - 28px); }

@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return signedIn() && request.auth.token.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isGuru() {
+      return hasRole('guru');
+    }
+
+    function isStudent() {
+      return hasRole('student');
+    }
+
+    function validClassId(classId) {
+      return classId is string && classId.matches('^[7-9][A-J]$');
+    }
+
+    function canAccessClass(classId) {
+      return validClassId(classId) && (
+        isAdmin() ||
+        (isStudent() && request.auth.token.classId == classId) ||
+        (isGuru() &&
+          request.auth.token.assignedClasses is list &&
+          classId in request.auth.token.assignedClasses)
+      );
+    }
+
+    function attendanceClassId(docId) {
+      return docId.split('_')[0];
+    }
+
+    function validAttendanceId(docId) {
+      let parts = docId.split('_');
+      return parts.size() == 2 &&
+        validClassId(parts[0]) &&
+        parts[1].matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function studentProfilePath() {
+      return /databases/$(database)/documents/students/$(request.auth.token.studentId);
+    }
+
+    function studentProfileExists() {
+      return isStudent() &&
+        request.auth.token.studentId is string &&
+        request.auth.token.studentId.size() > 0 &&
+        exists(studentProfilePath());
+    }
+
+    function studentProfile() {
+      return get(studentProfilePath()).data;
+    }
+
+    function studentMayChangeOwnAttendance(docId) {
+      let profile = studentProfile();
+      let name = profile.name;
+      let status = request.resource.data.get(name, null);
+      let onlyOwnFieldChanged = request.method == 'create'
+        ? request.resource.data.keys().hasOnly([name])
+        : request.resource.data.diff(resource.data).affectedKeys().hasOnly([name]);
+
+      return studentProfileExists() &&
+        profile.name is string &&
+        profile.classId == request.auth.token.classId &&
+        attendanceClassId(docId) == profile.classId &&
+        validAttendanceId(docId) &&
+        onlyOwnFieldChanged &&
+        (status == null || status in ['H', 'S', 'I', 'A']);
+    }
+
+    function detailParts(docId) {
+      return docId.split('__');
+    }
+
+    function detailClassId(docId) {
+      return detailParts(docId)[0].split('_')[0];
+    }
+
+    function validClassDetailId(docId) {
+      let parts = detailParts(docId);
+      let prefix = parts.size() == 2 ? parts[0].split('_') : [];
+      return parts.size() == 2 &&
+        prefix.size() == 2 &&
+        validClassId(prefix[0]) &&
+        prefix[1].matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function studentOwnsDetail(docId) {
+      let profile = studentProfile();
+      let parts = detailParts(docId);
+      let prefix = parts.size() == 2 ? parts[0].split('_') : [];
+      return studentProfileExists() &&
+        profile.name is string &&
+        profile.classId == request.auth.token.classId &&
+        validClassDetailId(docId) &&
+        prefix[0] == profile.classId &&
+        parts[1] == profile.name.replace('/', '-');
+    }
+
+    function validStudentDetail() {
+      let profile = studentProfile();
+      return request.resource.data.keys().hasOnly(['text', 'photo', 'by', 'at']) &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 2000 &&
+        request.resource.data.photo is string &&
+        request.resource.data.photo.size() <= 900000 &&
+        request.resource.data.by == profile.name &&
+        request.resource.data.at is int;
+    }
+
+    function studentOwnsNotification() {
+      let profile = studentProfile();
+      return studentProfileExists() &&
+        request.resource.data.keys().hasOnly([
+          'type', 'studentName', 'date', 'classId', 'createdAtMs', 'createdAt'
+        ]) &&
+        request.resource.data.classId == profile.classId &&
+        request.resource.data.classId == request.auth.token.classId &&
+        request.resource.data.studentName == profile.name &&
+        request.resource.data.type in ['izin', 'sakit', 'keluar'] &&
+        request.resource.data.date is string &&
+        request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        request.resource.data.createdAtMs is int &&
+        request.resource.data.createdAt == request.time;
+    }
+
+    // Each attendance document stores a class and date in its document ID.
+    // Students may change only their own name-keyed status; staff can read
+    // their class, while Admin can manage all classes.
+    match /absensi/{docId} {
+      allow read: if validAttendanceId(docId) && canAccessClass(attendanceClassId(docId));
+      allow create, update: if isAdmin() || studentMayChangeOwnAttendance(docId);
+      allow delete: if isAdmin();
+    }
+
+    // Health and absence details use class-scoped IDs for new records.
+    // Legacy IDs without a class are readable/deletable only by Admin.
+    match /izinDetail/{docId} {
+      allow read: if isAdmin() ||
+        (isGuru() && validClassDetailId(docId) && canAccessClass(detailClassId(docId))) ||
+        studentOwnsDetail(docId);
+      allow create, update: if isAdmin() ||
+        (studentOwnsDetail(docId) && validStudentDetail());
+      allow delete: if isAdmin() || studentOwnsDetail(docId);
+    }
+
+    match /sakitDetail/{docId} {
+      allow read: if isAdmin() ||
+        (isGuru() && validClassDetailId(docId) && canAccessClass(detailClassId(docId))) ||
+        studentOwnsDetail(docId);
+      allow create, update: if isAdmin() ||
+        (studentOwnsDetail(docId) && validStudentDetail());
+      allow delete: if isAdmin() || studentOwnsDetail(docId);
+    }
+
+    // The UI query for non-Admin users must include where('classId', '==', ...).
+    match /notifikasi/{docId} {
+      allow read: if isAdmin() ||
+        (resource.data.classId is string && canAccessClass(resource.data.classId));
+      allow create: if isAdmin() || studentOwnsNotification();
+      allow update, delete: if isAdmin();
+    }
+
+    match /pengumuman/{docId} {
+      allow read: if resource.data.classId is string && canAccessClass(resource.data.classId);
+      // Writes go through the session-checked Netlify Function (Admin SDK).
+      allow write: if false;
+    }
+
+    match /agenda/{docId} {
+      allow read: if resource.data.classId is string && canAccessClass(resource.data.classId);
+      allow write: if false;
+    }
+
+    match /jadwal/{classId} {
+      allow read: if canAccessClass(classId);
+      allow write: if false;
+    }
+
+    // No other client paths are granted by this draft. The Aventra repo has
+    // no code references to destinations, bookings, jurnalMengajar, or the
+    // legacy liveLocation/settings paths. piket.js exists but is not loaded
+    // by an HTML page. Current geofence/location access uses geofenceConfig
+    // and liveLocationPrivate through Netlify Functions with the Admin SDK,
+    // which bypasses Firestore Rules.
+  }
+}

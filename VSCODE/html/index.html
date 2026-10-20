@@ -212,7 +212,7 @@
       <div class="login-field">
         <label for="loginAdminAccount">Akun Admin</label>
         <select id="loginAdminAccount" autocomplete="off">
-          <option value="wiarsayana">I Putu Wiarsayana</option>
+          <option value="wiarsayana">I Putu Wiarsayana, S.Pd.B., M.Pd.</option>
           <option value="dandi">I Kadek Dandi Bagus Permana</option>
           <option value="aksha">Putu Aksha Raka</option>
         </select>
@@ -226,8 +226,19 @@
     <div id="loginFormGuru" style="display:none;">
       <button type="button" class="login-sub-back" data-back-staff>← Kembali ke pilihan akses</button>
       <div class="login-field">
-        <label for="loginGuruPass">Password Guru</label>
-        <input type="password" id="loginGuruPass" autocomplete="off" placeholder="••••••••">
+        <label for="loginTeacherType">Jenis akses guru</label>
+        <select id="loginTeacherType">
+          <option value="piket">Guru piket</option>
+          <option value="wali">Wali kelas / guru wali</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label for="loginTeacherId">Nama guru</label>
+        <select id="loginTeacherId"><option value="">Memuat daftar guru…</option></select>
+      </div>
+      <div class="login-field">
+        <label for="loginGuruPass">Sandi pribadi guru</label>
+        <input type="password" id="loginGuruPass" autocomplete="current-password" placeholder="Sandi dari Admin">
       </div>
     </div>
 
@@ -243,13 +254,23 @@
 
 <div class="admin-class-controls" id="adminClassControls" hidden>
   <div>
-    <h3>Pantau kelas</h3>
-    <p>Pilih kelas untuk membuka roster dan data kelas. Pemantauan lokasi semua kelas dapat diaktifkan terpisah.</p>
+    <h3 id="classControlsTitle">Pantau kelas</h3>
+    <p id="classControlsDescription">Pilih kelas untuk membuka roster dan data kelas.</p>
   </div>
-  <label for="adminClassSelect">Kelas yang dibuka</label>
+  <label for="adminClassSelect" id="classControlsLabel">Kelas yang dibuka</label>
   <select id="adminClassSelect" class="absen-date">
     <option value="">Pilih kelas…</option>
   </select>
+  <details class="teacher-account-admin" id="teacherAccountAdmin" hidden>
+    <summary>Kelola sandi login guru</summary>
+    <p>Setiap guru memakai sandi pribadi. Guru piket dapat memilih kelas pantauan; wali/guru wali dibatasi ke kelas tugasnya.</p>
+    <label for="teacherAccountSelect">Guru</label>
+    <select id="teacherAccountSelect" class="absen-date"><option value="">Pilih guru…</option></select>
+    <label for="teacherPasswordInput">Sandi awal / sandi baru (8–128 karakter)</label>
+    <input id="teacherPasswordInput" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Buat sandi pribadi">
+    <button type="button" id="saveTeacherAccount">Simpan sandi guru</button>
+    <p id="teacherAccountStatus" aria-live="polite"></p>
+  </details>
 </div>
 
 <div class="nav-wrap" id="navWrap">
@@ -299,10 +320,9 @@
   </div>
 
   <div class="stat-row load-in d5">
-    <span class="stat-chip"><span class="dot"></span>Wali Kelas <b data-count="1">0</b></span>
-    <span class="stat-chip"><span class="dot"></span>Pengurus Inti <b data-count="6">0</b></span>
-    <span class="stat-chip"><span class="dot"></span>Anggota <b data-count="27">0</b></span>
-    <span class="stat-chip"><span class="dot"></span>Total Murid <b data-count="33">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Wali Kelas <b id="teacherCount">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Pengurus Inti <b id="officerCount">0</b></span>
+    <span class="stat-chip"><span class="dot"></span>Murid <b id="studentCount">0</b></span>
   </div>
 
   <div class="scroll-cue load-in d6">GULIR &nbsp;↓</div>
@@ -312,54 +332,22 @@
   <div class="section-head reveal">
     <div class="eyebrow">Kru Aventra</div>
     <h2>Struktur Kelas</h2>
-    <p>Susunan wali kelas, pengurus inti, dan seluruh anggota yang menjalankan misi belajar Aventra Class sepanjang tahun ajaran ini.</p>
+    <p id="classStructureSubtitle">Susunan pengurus akan ditampilkan sesuai kelas yang dipilih.</p>
   </div>
 
-  <div class="lead-cards stagger-container">
-    <div class="lead-card tilt stagger-item">
-      <div class="avatar-ring">RS</div>
-      <div class="lead-info">
-        <div class="role-tag">Wali Kelas</div>
-        <h3>Husnanda Arief A, S.Pd.</h3>
-        <p>Pembimbing &amp; penanggung jawab kelas Aventra</p>
-      </div>
+  <div class="lead-cards stagger-container" id="classLeadCards"></div>
+  <div class="officer-grid stagger-container" id="classOfficerGrid"></div>
+  <p class="list-empty" id="classStructureEmpty">Masuk dan pilih kelas untuk melihat strukturnya.</p>
+  <div class="class-structure-editor" id="classStructureEditor" hidden>
+    <h3>Atur Struktur Kelas</h3>
+    <p>Data disimpan khusus untuk kelas yang sedang dipilih.</p>
+    <label>Nama wali kelas <input id="classTeacherInput" type="text" maxlength="120" placeholder="Nama wali kelas"></label>
+    <div id="classOfficerEditorRows"></div>
+    <div class="class-structure-actions">
+      <button type="button" id="addClassOfficer">Tambah pengurus</button>
+      <button type="button" id="saveClassStructure">Simpan struktur</button>
     </div>
-    <div class="lead-card teal tilt stagger-item">
-      <div class="avatar-ring">NK</div>
-      <div class="lead-info">
-        <div class="role-tag">Ketua Kelas</div>
-        <h3>Ni Ketut Nindia Candra Dewi</h3>
-        <p>Memimpin koordinasi &amp; kegiatan kelas</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="officer-grid stagger-container">
-    <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">AS</div>
-      <div class="role-tag">Wakil Ketua</div>
-      <h4>I Ketut Anna Ary Sudana Putra</h4>
-    </div>
-    <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">LP</div>
-      <div class="role-tag">Sekretaris 1</div>
-      <h4>Luh Putu Laksmi Pradnyaswari</h4>
-    </div>
-    <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">BP</div>
-      <div class="role-tag">Sekretaris 2</div>
-      <h4>I Made Bayu Pastika Putra</h4>
-    </div>
-    <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">AK</div>
-      <div class="role-tag">Bendahara 1</div>
-      <h4>I Gusti Ayu Kadek Sulaksmi</h4>
-    </div>
-    <div class="officer-card tilt stagger-item">
-      <div class="avatar-ring">LA</div>
-      <div class="role-tag">Bendahara 2</div>
-      <h4>I Gusti Lanang Agung Putra Wedhana</h4>
-    </div>
+    <p id="classStructureEditorStatus" aria-live="polite"></p>
   </div>
 
   <div class="roster-title reveal">
@@ -377,7 +365,6 @@
   </div>
 
   <div class="absen-controls reveal">
-    <select class="absen-month" id="absenMonth"></select>
     <input type="date" class="absen-date" id="absenDate">
     <button class="absen-reset" id="absenReset">Reset Tanggal Ini</button>
     <button class="rekap-btn" id="rekapBtn">Rekap Bulanan</button>
@@ -669,6 +656,7 @@
 </footer>
 
 <!-- auth.js menangani login lewat server (Netlify Function), aman dilihat publik. -->
+<script src="js/teacher-directory.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/script.js" defer></script>
 <script>

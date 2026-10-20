@@ -16,6 +16,8 @@ const db = firebase.firestore();
 let geofenceSettings = null;
 let geofenceSettingsUnsubscribe = null;
 let classInfoUnsubscribers = [];
+let classStructureRequestSequence = 0;
+let currentClassStructure = { teacherName: '', officers: [] };
 
 function stopClassInfoListeners() {
   classInfoUnsubscribers.forEach(unsubscribe => {
@@ -229,6 +231,189 @@ function renderClassSchedule(snapshot, classId) {
   });
 }
 
+function initialsForName(name) {
+  return String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2)
+    .map(part => part[0].toLocaleUpperCase('id-ID')).join('') || '—';
+}
+
+function renderClassStructure(structure, classId) {
+  currentClassStructure = structure || { teacherName: '', officers: [] };
+  const teacherName = String(currentClassStructure.teacherName || '').trim();
+  const officers = Array.isArray(currentClassStructure.officers) ? currentClassStructure.officers : [];
+  const leads = document.getElementById('classLeadCards');
+  const grid = document.getElementById('classOfficerGrid');
+  const empty = document.getElementById('classStructureEmpty');
+  const subtitle = document.getElementById('classStructureSubtitle');
+  if (!leads || !grid || !empty) return;
+  leads.replaceChildren();
+  grid.replaceChildren();
+  if (subtitle) subtitle.textContent = `Struktur pengurus kelas ${classId}.`;
+  const president = officers.find(person => /ketua kelas/i.test(person.role));
+  const addLead = (role, name, teal = false, description = '') => {
+    const card = document.createElement('article');
+    card.className = `lead-card tilt stagger-item in${teal ? ' teal' : ''}`;
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar-ring';
+    avatar.textContent = initialsForName(name);
+    const info = document.createElement('div');
+    info.className = 'lead-info';
+    const tag = document.createElement('div');
+    tag.className = 'role-tag';
+    tag.textContent = role;
+    const heading = document.createElement('h3');
+    heading.textContent = name;
+    info.append(tag, heading);
+    if (description) {
+      const note = document.createElement('p');
+      note.textContent = description;
+      info.appendChild(note);
+    }
+    card.append(avatar, info);
+    leads.appendChild(card);
+  };
+  if (teacherName) addLead('Wali Kelas', teacherName, false, 'Pembimbing kelas');
+  if (president) addLead(president.role, president.name, true, 'Pengurus kelas');
+  officers.filter(person => person !== president).forEach(person => {
+    const card = document.createElement('article');
+    card.className = 'officer-card tilt stagger-item in';
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar-ring';
+    avatar.textContent = initialsForName(person.name);
+    const tag = document.createElement('div');
+    tag.className = 'role-tag';
+    tag.textContent = person.role;
+    const heading = document.createElement('h4');
+    heading.textContent = person.name;
+    card.append(avatar, tag, heading);
+    grid.appendChild(card);
+  });
+  empty.textContent = `Struktur kelas ${classId} belum diisi.`;
+  empty.style.display = teacherName || officers.length ? 'none' : 'block';
+  const teacherCount = document.getElementById('teacherCount');
+  const officerCount = document.getElementById('officerCount');
+  if (teacherCount) teacherCount.textContent = teacherName ? '1' : '0';
+  if (officerCount) officerCount.textContent = String(officers.length);
+  const editor = document.getElementById('classStructureEditor');
+  if (editor && currentSessionInfo().role === 'admin') {
+    editor.hidden = false;
+    const teacherInput = document.getElementById('classTeacherInput');
+    if (teacherInput) teacherInput.value = teacherName;
+    renderClassOfficerEditor(officers);
+  }
+}
+
+function renderClassOfficerEditor(officers = []) {
+  const container = document.getElementById('classOfficerEditorRows');
+  if (!container) return;
+  container.replaceChildren();
+  officers.slice(0, 20).forEach(person => addClassOfficerRow(person.name, person.role));
+}
+
+function addClassOfficerRow(name = '', role = '') {
+  const container = document.getElementById('classOfficerEditorRows');
+  if (!container || container.children.length >= 20) return;
+  const row = document.createElement('div');
+  row.className = 'class-officer-editor-row';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.maxLength = 120;
+  nameInput.placeholder = 'Nama pengurus';
+  nameInput.value = name;
+  nameInput.setAttribute('aria-label', 'Nama pengurus kelas');
+  const roleInput = document.createElement('input');
+  roleInput.type = 'text';
+  roleInput.maxLength = 60;
+  roleInput.placeholder = 'Jabatan, misalnya Ketua Kelas';
+  roleInput.value = role;
+  roleInput.setAttribute('aria-label', 'Jabatan pengurus kelas');
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.textContent = 'Hapus';
+  remove.addEventListener('click', () => row.remove());
+  row.append(nameInput, roleInput, remove);
+  container.appendChild(row);
+}
+
+function setupClassStructureEditor() {
+  const editor = document.getElementById('classStructureEditor');
+  if (!editor) return;
+  editor.hidden = currentSessionInfo().role !== 'admin';
+  const addButton = document.getElementById('addClassOfficer');
+  const saveButton = document.getElementById('saveClassStructure');
+  if (addButton) addButton.onclick = () => addClassOfficerRow();
+  if (saveButton) saveButton.onclick = async () => {
+    const classId = getActiveClassId();
+    const status = document.getElementById('classStructureEditorStatus');
+    const officers = [...document.querySelectorAll('#classOfficerEditorRows .class-officer-editor-row')]
+      .map(row => ({
+        name: row.children[0].value.trim(),
+        role: row.children[1].value.trim()
+      }));
+    if (officers.some(person => !person.name || !person.role)) {
+      if (status) status.textContent = 'Lengkapi nama dan jabatan setiap pengurus, atau hapus baris yang kosong.';
+      return;
+    }
+    saveButton.disabled = true;
+    if (status) status.textContent = 'Menyimpan struktur kelas…';
+    try {
+      await sendClassInfoAction('save-class-structure', {
+        classId,
+        teacherName: document.getElementById('classTeacherInput')?.value.trim() || '',
+        officers
+      });
+      await loadClassStructure(classId);
+      if (getActiveClassId() === classId && status) status.textContent = `Struktur kelas ${classId} berhasil disimpan.`;
+    } catch (error) {
+      if (status) status.textContent = error.message || 'Struktur gagal disimpan.';
+    } finally {
+      saveButton.disabled = false;
+    }
+  };
+}
+
+async function loadClassStructure(classId) {
+  const sequence = ++classStructureRequestSequence;
+  const empty = document.getElementById('classStructureEmpty');
+  const leads = document.getElementById('classLeadCards');
+  const grid = document.getElementById('classOfficerGrid');
+  if (!classId || !/^[7-9][A-J]$/.test(classId)) {
+    if (leads) leads.replaceChildren();
+    if (grid) grid.replaceChildren();
+    if (empty) {
+      empty.textContent = currentSessionInfo().role === 'admin'
+        ? 'Pilih kelas di panel Admin untuk melihat strukturnya.'
+        : 'Masuk untuk melihat struktur kelas.';
+      empty.style.display = 'block';
+    }
+    const editor = document.getElementById('classStructureEditor');
+    if (editor) editor.hidden = true;
+    return;
+  }
+  setupClassStructureEditor();
+  const editor = document.getElementById('classStructureEditor');
+  if (editor) editor.hidden = true;
+  if (leads) leads.replaceChildren();
+  if (grid) grid.replaceChildren();
+  currentClassStructure = { teacherName: '', officers: [] };
+  const status = document.getElementById('classStructureEditorStatus');
+  if (status) status.textContent = '';
+  if (empty) {
+    empty.textContent = `Memuat struktur kelas ${classId}…`;
+    empty.style.display = 'block';
+  }
+  try {
+    const result = await sendClassInfoAction('class-structure', { classId });
+    if (sequence !== classStructureRequestSequence || getActiveClassId() !== classId) return;
+    renderClassStructure(result.structure, classId);
+  } catch (error) {
+    if (sequence !== classStructureRequestSequence) return;
+    if (empty) {
+      empty.textContent = error.message || `Struktur kelas ${classId} gagal dimuat.`;
+      empty.style.display = 'block';
+    }
+  }
+}
+
 async function sendClassInfoAction(action, payload) {
   const token = window.AventraAuth?.getToken?.();
   if (!token) throw new Error('Sesi login tidak ditemukan. Masuk kembali.');
@@ -321,6 +506,7 @@ function startClassInfoListeners(session) {
   stopClassInfoListeners();
   setupClassInfoComposer(session);
   const classId = getActiveClassId(session);
+  loadClassStructure(classId);
   if (!classId || !/^[7-9][A-J]$/.test(classId)) {
     const message = session?.role === 'admin'
       ? 'Pilih angkatan dan kelas pada panel Admin untuk melihat data kelas.'
@@ -393,11 +579,12 @@ document.addEventListener(
     startClassInfoListeners(event.detail || currentSessionInfo());
     initializeAttendance(event.detail);
     startAdminLocationMonitor();
+    updateNotifPanelVisibility();
   }
 );
 
 document.addEventListener('aventra:class-change', () => {
-  if (currentSessionInfo().role !== 'admin') return;
+  if (!['admin', 'guru'].includes(currentSessionInfo().role)) return;
   stopAttendanceListener();
   attendanceLoadSequence++;
   currentDayData = {};
@@ -406,11 +593,13 @@ document.addEventListener('aventra:class-change', () => {
   if (absenList) absenList.replaceChildren();
   startClassInfoListeners(currentSessionInfo());
   initializeAttendance(currentSessionInfo());
+  updateNotifPanelVisibility();
 });
 
 document.addEventListener(
   'aventra:logout',
   () => {
+    loadClassStructure(null);
     attendanceLoadSequence++;
     stopClassInfoListeners();
     stopGeoWatch(true);
@@ -434,6 +623,11 @@ function getActiveClassId(session) {
 
   if (s.role === 'admin') {
     return window.AventraAuth?.getSelectedClassId?.() || null;
+  }
+
+  if (s.role === 'guru') {
+    const selected = window.AventraAuth?.getSelectedClassId?.() || null;
+    if (selected && Array.isArray(s.assignedClasses) && s.assignedClasses.includes(selected)) return selected;
   }
 
   if (s.classId) {
@@ -539,72 +733,7 @@ function legacySakitDetailDocRef(dateStr, studentName) {
     .doc(`${dateStr}__${safeName}`);
 }
 
-const fallbackRoster = [
-  "Casey",
-  "Redi",
-  "Rizki",
-  "Alit Payama",
-  "Novi",
-  "Ary",
-  "Dek Adi",
-  "Candra",
-  "Dandi Bagus",
-  "Prabu",
-  "Alit",
-  "Cipta",
-  "David",
-  "Resta",
-  "Awan",
-  "Diah",
-  "Gus Dwik",
-  "Cahya Aprianti",
-  "April",
-  "Meisya",
-  "Rastia",
-  "Mang Cahya",
-  "Desita",
-  "Damay",
-  "Feli",
-  "Aldo"
-];
-
-const fallbackPengurus = [
-  {
-    name: "Ni Ketut Nindia Candra Dewi",
-    jabatan: "Ketua Kelas"
-  },
-  {
-    name: "I Ketut Anna Ary Sudana Putra",
-    jabatan: "Wakil Ketua"
-  },
-  {
-    name: "Luh Putu Laksmi Pradnyaswari",
-    jabatan: "Sekretaris 1"
-  },
-  {
-    name: "I Made Bayu Pastika Putra",
-    jabatan: "Sekretaris 2"
-  },
-  {
-    name: "I Gusti Ayu Kadek Sulaksmi",
-    jabatan: "Bendahara 1"
-  },
-  {
-    name: "I Gusti Lanang Agung Putra Wedhana",
-    jabatan: "Bendahara 2"
-  }
-];
-
-const roster = fallbackRoster;
-const pengurus = fallbackPengurus;
-
-let kelasLengkap = [
-  ...fallbackPengurus,
-  ...fallbackRoster.map(name => ({
-    name,
-    jabatan: ""
-  }))
-];
+let kelasLengkap = [];
 
 let currentDayData = {};
 let attendanceUnsubscribe = null;
@@ -654,15 +783,6 @@ function findStudentByName(typed) {
   );
 }
 
-let pengurusNameSet = new Set(
-  fallbackPengurus.map(
-    person =>
-      person.name
-        .trim()
-        .toLowerCase()
-  )
-);
-
 function currentSessionInfo() {
   const s = window.AventraAuth
     ? window.AventraAuth.getSession()
@@ -678,7 +798,7 @@ function currentSessionInfo() {
   if (s.role === 'admin') {
     return {
       role: 'admin',
-      name: 'Admin',
+      name: s.name || 'Admin',
       classId: window.AventraAuth?.getSelectedClassId?.() || null,
       teacherId: s.teacherId || null
     };
@@ -688,8 +808,9 @@ function currentSessionInfo() {
     return {
       role: 'guru',
       name: s.name || 'Guru',
-      classId: s.classId || null,
+      classId: window.AventraAuth?.getSelectedClassId?.() || s.classId || null,
       teacherId: s.teacherId || null,
+      teacherType: s.teacherType || null,
       assignedClasses:
         Array.isArray(s.assignedClasses)
           ? s.assignedClasses
@@ -704,13 +825,7 @@ function currentSessionInfo() {
     };
   }
 
-  const role = pengurusNameSet.has(
-    (s.name || '')
-      .trim()
-      .toLowerCase()
-  )
-    ? 'pengurus'
-    : 'student';
+  const role = s.role === 'pengurus' ? 'pengurus' : 'student';
 
   return {
     role,
@@ -817,6 +932,8 @@ function renderRosterGrid(list) {
 
     rosterGrid.appendChild(card);
   });
+  const studentCount = document.getElementById('studentCount');
+  if (studentCount) studentCount.textContent = String(list.length);
 }
 
 async function tryLoadRosterFromFirestore() {
@@ -1340,10 +1457,9 @@ function paintAbsensi(date, session) {
                         student.name
                       ).delete(),
 
-                      legacyIzinDetailDocRef(
-                        date,
-                        student.name
-                      ).delete()
+                      currentSessionInfo().role === 'admin'
+                        ? legacyIzinDetailDocRef(date, student.name).delete()
+                        : Promise.resolve()
                     ]
                   );
                 }
@@ -1359,10 +1475,9 @@ function paintAbsensi(date, session) {
                         student.name
                       ).delete(),
 
-                      legacySakitDetailDocRef(
-                        date,
-                        student.name
-                      ).delete()
+                      currentSessionInfo().role === 'admin'
+                        ? legacySakitDetailDocRef(date, student.name).delete()
+                        : Promise.resolve()
                     ]
                   );
                 }
@@ -1997,7 +2112,7 @@ async function openIzinViewModal(
         student.name
       ).get();
 
-    if (!snap.exists) {
+    if (!snap.exists && currentSessionInfo().role === 'admin') {
       snap =
         await legacyIzinDetailDocRef(
           date,
@@ -2348,7 +2463,7 @@ async function openSakitViewModal(
         student.name
       ).get();
 
-    if (!snap.exists) {
+    if (!snap.exists && currentSessionInfo().role === 'admin') {
       snap =
         await legacySakitDetailDocRef(
           date,
@@ -2590,7 +2705,19 @@ function listenNotifikasi() {
     NOTIF_MAX_AGE_MS;
 
   unsubscribeNotif =
-    db.collection('notifikasi')
+    (() => {
+      const session = currentSessionInfo();
+      let query = db.collection('notifikasi');
+
+      // Admin has a global claim. Other roles must constrain the query to a
+      // class they are allowed to see; Firestore Rules do not filter results.
+      if (session.role !== 'admin') {
+        const classId = getActiveClassId(session);
+        if (!classId) return null;
+        query = query.where('classId', '==', classId);
+      }
+
+      return query
       .where(
         'createdAtMs',
         '>=',
@@ -2609,6 +2736,7 @@ function listenNotifikasi() {
             err
           )
       );
+    })();
 }
 
 function updateNotifPanelVisibility() {
@@ -2722,7 +2850,7 @@ async function openRekap() {
   }
 
   const monthVal =
-    absenMonthSelect.value;
+    (absenDateInput.value || todayStr()).slice(0, 7);
 
   const [
     y,
@@ -2781,34 +2909,21 @@ async function openRekap() {
     return;
   }
 
-  const startId =
-    `${classId}_${monthVal}-01`;
-
-  const endId =
-    `${classId}_${monthVal}-${pad2(
-      daysInMonth(y, m)
-    )}`;
-
   try {
-    const snap =
-      await db
-        .collection('absensi')
-        .where(
-          firebase.firestore.FieldPath.documentId(),
-          '>=',
-          startId
-        )
-        .where(
-          firebase.firestore.FieldPath.documentId(),
-          '<=',
-          endId
-        )
-        .get();
+    const monthDays = daysInMonth(y, m);
+    const snapshots = await Promise.all(
+      Array.from({ length: monthDays }, (_, index) => {
+        const day = pad2(index + 1);
+        const dateId = `${classId}_${monthVal}-${day}`;
+        return db.collection('absensi').doc(dateId).get();
+      })
+    );
+    const recordedSnapshots = snapshots.filter(snapshot => snapshot.exists);
 
     rekapLoading.style.display =
       'none';
 
-    if (snap.empty) {
+    if (recordedSnapshots.length === 0) {
       rekapEmpty.textContent =
         'Belum ada data absensi tercatat pada bulan ini.';
 
@@ -2819,7 +2934,7 @@ async function openRekap() {
     }
 
     const recordedDays =
-      snap.size;
+      recordedSnapshots.length;
 
     const counts = {};
 
@@ -2836,9 +2951,8 @@ async function openRekap() {
       }
     );
 
-    snap.forEach(doc => {
-      const dayData =
-        doc.data();
+    recordedSnapshots.forEach(snapshot => {
+      const dayData = snapshot.data();
 
       kelasLengkap.forEach(
         student => {

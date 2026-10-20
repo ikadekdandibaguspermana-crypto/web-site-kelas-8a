@@ -1,293 +1,106 @@
-
 const crypto = require('crypto');
+const { promisify } = require('util');
 const admin = require('firebase-admin');
+const { directory } = require('../../js/teacher-directory');
 
-// Origin yang diizinkan.
-const allowedOrigins = [
-  'http://localhost:5500',
-  'https://aventra-x-2026-web-bydandi.netlify.app'
-];
+const scrypt = promisify(crypto.scrypt);
+const SCRYPT = { N: 16384, r: 8, p: 1, keyLength: 64, maxmem: 64 * 1024 * 1024 };
+const allowedOrigins = ['http://localhost:5500', 'https://aventra-x-2026-web-bydandi.netlify.app'];
 
-function getCorsHeaders(event) {
-  const origin =
-    event.headers?.origin ||
-    event.headers?.Origin ||
-    '';
-
+function headersFor(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
   const headers = {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Cache-Control': 'no-store',
     'Content-Type': 'application/json',
-    'Vary': 'Origin'
+    Vary: 'Origin'
   };
-
-  if (allowedOrigins.includes(origin)) {
-    headers['Access-Control-Allow-Origin'] = origin;
-  }
-
+  if (allowedOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
   return headers;
 }
 
-// Inisialisasi Firebase Admin.
 if (!admin.apps.length) {
-  let serviceAccount;
-
   try {
-    serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || ''
-    );
-  } catch {
-    serviceAccount = null;
-  }
-
-  if (serviceAccount) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '');
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  } catch { /* Handler reports missing Firebase configuration. */ }
 }
 
-function getDb() {
-  if (!admin.apps.length) {
-    return null;
-  }
-
-  return admin.firestore();
+function reply(statusCode, headers, payload) {
+  return { statusCode, headers, body: JSON.stringify(payload) };
 }
 
-exports.handler = async (event) => {
-  const corsHeaders = getCorsHeaders(event);
+async function verifyPassword(password, encoded) {
+  if (typeof encoded !== 'string') return false;
+  const parts = encoded.split('$');
+  if (parts.length !== 6 || parts[0] !== 'scrypt' || Number(parts[1]) !== SCRYPT.N ||
+      Number(parts[2]) !== SCRYPT.r || Number(parts[3]) !== SCRYPT.p) return false;
+  try {
+    const salt = Buffer.from(parts[4], 'base64url');
+    const expected = Buffer.from(parts[5], 'base64url');
+    if (salt.length !== 16 || expected.length !== SCRYPT.keyLength) return false;
+    const actual = await scrypt(password, salt, expected.length, SCRYPT);
+    return crypto.timingSafeEqual(actual, expected);
+  } catch { return false; }
+}
 
-  // Menangani preflight CORS dari browser.
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
+function signSession(payload, secret) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(encoded).digest('hex');
+  return `${encoded}.${signature}`;
+}
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Method tidak diizinkan.'
-      })
-    };
-  }
+exports.handler = async event => {
+  const headers = headersFor(event);
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.httpMethod !== 'POST') return reply(405, headers, { ok: false, error: 'Method tidak diizinkan.' });
+  if (!admin.apps.length) return reply(503, headers, { ok: false, error: 'Firebase Admin belum terkonfigurasi.' });
 
   let body;
+  try { body = JSON.parse(event.body || '{}'); }
+  catch { return reply(400, headers, { ok: false, error: 'Permintaan login tidak valid.' }); }
+
+  const teacherId = String(body.teacherId || '').trim();
+  const teacherType = String(body.teacherType || '').trim();
+  const password = String(body.password || '');
+  const teacher = directory.find(item => item.id === teacherId);
+  if (!teacher || !['piket', 'wali'].includes(teacherType) || !teacher.teacherTypes.includes(teacherType) || password.length < 8 || password.length > 128) {
+    return reply(400, headers, { ok: false, error: 'Pilih nama, jenis akses, dan sandi guru yang valid.' });
+  }
+
+  const sessionSecret = process.env.SESSION_SECRET || '';
+  if (!sessionSecret) return reply(503, headers, { ok: false, error: 'SESSION_SECRET belum dikonfigurasi di Netlify.' });
 
   try {
-    body = JSON.parse(event.body || '{}');
-  } catch {
-    return {
-      statusCode: 400,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Request tidak valid.'
-      })
-    };
-  }
-
-  const GURU_PASSWORD =
-    process.env.GURU_PASSWORD || '';
-
-  const SESSION_SECRET =
-    process.env.SESSION_SECRET || '';
-
-  if (!GURU_PASSWORD) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error:
-          'GURU_PASSWORD belum diatur di Environment Variables Netlify.'
-      })
-    };
-  }
-
-  if (!SESSION_SECRET) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error:
-          'SESSION_SECRET belum diatur di Environment Variables Netlify.'
-      })
-    };
-  }
-
-  const password =
-    String(body.password || '');
-
-  if (
-    !password ||
-    password !== GURU_PASSWORD
-  ) {
-    return {
-      statusCode: 401,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Password guru salah.'
-      })
-    };
-  }
-
-  const db = getDb();
-
-  if (!db) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Firebase Admin belum terkonfigurasi.'
-      })
-    };
-  }
-
-  let teacherId = null;
-  let teacherName = 'Guru';
-  let assignedClasses = [];
-
-  try {
-    const snapshot = await db
-      .collection('teachers')
-      .limit(2)
-      .get();
-
-    if (snapshot.size === 1) {
-      const doc = snapshot.docs[0];
-      const data = doc.data();
-
-      teacherId = doc.id;
-
-      teacherName =
-        data.name ||
-        data.nama ||
-        'Guru';
-
-      assignedClasses =
-        Array.isArray(data.assignedClasses)
-          ? data.assignedClasses
-          : [];
+    const db = admin.firestore();
+    const snapshot = await db.collection('teachers').doc(teacherId).get();
+    const account = snapshot.exists ? snapshot.data() : null;
+    if (!account || account.status !== 'active' || !await verifyPassword(password, account.passwordHash)) {
+      return reply(401, headers, { ok: false, error: 'Nama atau sandi guru salah, atau akun belum disiapkan Admin.' });
     }
 
-    if (snapshot.size > 1) {
-      return {
-        statusCode: 409,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          ok: false,
-          error:
-            'Terdapat lebih dari satu data guru. Login guru perlu identitas guru sebelum sistem dilanjutkan.'
-        })
-      };
-    }
-
+    const assignedClasses = teacherType === 'piket'
+      ? (teacherDirectoryClassIds())
+      : teacher.waliClasses;
+    if (!assignedClasses.length) return reply(403, headers, { ok: false, error: 'Akun belum memiliki kelas tugas.' });
+    const classId = teacherType === 'wali' ? assignedClasses[0] : null;
+    const firebaseUid = `aventra-guru-${crypto.createHash('sha256').update(teacherId).digest('hex')}`;
+    const expiry = Date.now() + 12 * 60 * 60 * 1000;
+    const firebaseCustomToken = await admin.auth().createCustomToken(firebaseUid, {
+      role: 'guru', accountId: teacherId, teacherId, teacherType, assignedClasses
+    });
+    const payload = { accountId: teacherId, firebaseUid, name: teacher.name, role: 'guru', teacherId, teacherType, classId, assignedClasses, expiry };
+    return reply(200, headers, {
+      ok: true, token: signSession(payload, sessionSecret), firebaseCustomToken, firebaseUid,
+      accountId: teacherId, expiry, role: 'guru', name: teacher.name, teacherId, teacherType, classId, assignedClasses
+    });
   } catch (error) {
-    console.error(
-      '[login-guru] Firestore error:',
-      error
-    );
-
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Gagal membaca data guru.'
-      })
-    };
+    console.error('[login-guru] login error:', error);
+    return reply(500, headers, { ok: false, error: 'Login guru gagal diproses. Coba lagi.' });
   }
-
-  const classId =
-    assignedClasses.length > 0
-      ? assignedClasses[0]
-      : '';
-
-  // Token JSON bertanda tangan dengan ID akun guru.
-  if (!teacherId) {
-    return {
-      statusCode: 409,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Data akun guru belum tersedia. Login guru belum dapat digunakan.'
-      })
-    };
-  }
-
-  const expiry = Date.now() + 12 * 60 * 60 * 1000;
-  const firebaseUid = `aventra-guru-${crypto
-    .createHash('sha256')
-    .update(String(teacherId))
-    .digest('hex')}`;
-  let firebaseCustomToken;
-
-  try {
-    firebaseCustomToken = await admin.auth().createCustomToken(
-      firebaseUid,
-      {
-        role: 'guru',
-        accountId: teacherId,
-        teacherId,
-        classId: classId || '',
-        assignedClasses
-      }
-    );
-  } catch (error) {
-    console.error('[login-guru] Firebase token error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Gagal membuat sesi Firebase.'
-      })
-    };
-  }
-
-  const sessionPayload = {
-    accountId: teacherId,
-    firebaseUid,
-    name: teacherName,
-    role: 'guru',
-    classId: classId || null,
-    assignedClasses,
-    expiry
-  };
-  const payloadEncoded = Buffer
-    .from(JSON.stringify(sessionPayload))
-    .toString('base64url');
-  const sig = crypto
-    .createHmac('sha256', SESSION_SECRET)
-    .update(payloadEncoded)
-    .digest('hex');
-  const token = `${payloadEncoded}.${sig}`;
-
-  return {
-    statusCode: 200,
-    headers: corsHeaders,
-    body: JSON.stringify({
-      ok: true,
-      token,
-      firebaseCustomToken,
-      firebaseUid,
-      accountId: teacherId,
-      expiry,
-      role: 'guru',
-      name: teacherName,
-      classId: classId || null,
-      assignedClasses,
-      teacherId
-    })
-  };
 };
+
+function teacherDirectoryClassIds() {
+  return Array.from({ length: 3 }, (_, gradeIndex) => [...'ABCDEFGHIJ'].map(letter => `${gradeIndex + 7}${letter}`)).flat();
+}
