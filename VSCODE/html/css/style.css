@@ -581,7 +581,7 @@
   footer p{ color:var(--text-low); font-size:12.5px; margin-top:10px; font-family:var(--font-mono); }
 
   .login-gate{
-    position:fixed; inset:0; z-index:500; background:var(--bg-void);
+    position:fixed; inset:0; z-index:500; background:#112234;
     display:flex; align-items:center; justify-content:center; padding:24px;
   }
   .login-gate.hidden{ display:none; }

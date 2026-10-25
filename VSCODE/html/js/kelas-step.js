@@ -6,7 +6,7 @@
   //    Dua kemungkinan sudah dimasukkan; hapus yang tidak dipakai.
   var TARGET = '#gateCardMasuk, .gate-card[data-gate="student"]';
 
-  // 2) SESUAIKAN: daftar kelas per tingkat. Ini hanya contoh, isi sesuai sekolah.
+  // 2) Daftar kelas asli SMPN 1 Abiansemal: 7A-7J, 8A-8J, 9A-9I.
   var DAFTAR_KELAS = {
     7: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
     8: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
