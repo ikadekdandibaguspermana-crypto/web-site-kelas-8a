@@ -31,34 +31,6 @@
     position:relative;
   }
 
-  .class-photo-bg{
-    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
-    background-image:url('./asset/foto-kelas.jpg');
-    background-size:cover;
-    background-position:50% 50%;
-    background-repeat:no-repeat;
-  }
-  .class-photo-bg::after{
-    content:''; position:absolute; inset:0;
-    background:linear-gradient(180deg, rgba(10,13,26,0.78), rgba(10,13,26,0.55) 40%, rgba(10,13,26,0.85));
-  }
-  body.light-mode .class-photo-bg{ opacity:0.35; }
-
-  @media (max-width:860px){
-    .class-photo-bg{
-      left:-15%;
-      right:-15%;
-      background-size:auto 100%;
-      animation:panClassPhoto 22s ease-in-out infinite;
-      will-change:transform;
-    }
-    @keyframes panClassPhoto{
-      0%{ transform:translateX(0); }
-      50%{ transform:translateX(-12%); }
-      100%{ transform:translateX(0); }
-    }
-  }
-
   .starfield{
     position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
@@ -675,7 +647,6 @@
     *{ animation:none !important; transition:none !important; }
     html{ scroll-behavior:auto; }
     .load-in, .stagger-item, .reveal{ opacity:1 !important; transform:none !important; }
-    .class-photo-bg{ transform:none !important; }
   }
 
   a:focus-visible, button:focus-visible{
@@ -1358,4 +1329,10 @@
     .profile-hero{ flex-direction:column; text-align:center; gap:26px; }
     .profile-photo-frame{ width:170px; height:170px; margin:0 auto; }
     .profile-bio{ max-width:100%; }
+}
+
+@media (max-width: 860px) {
+  .gate-hero-actions {
+    padding-inline: 12px; 
+  }
 }

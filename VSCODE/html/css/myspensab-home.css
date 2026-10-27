@@ -39,7 +39,6 @@
   color:#fff;
   padding:0 clamp(20px,5vw,72px) 88px;
   border-radius:0 0 40px 40px;
-  box-shadow:0 18px 20px -5px rgba(1, 8, 15, 0.626);
 }
 #gateLanding .gate-hero-inner{
   max-width:1180px; margin:0 auto;
@@ -137,30 +136,29 @@
 #gateLanding #gateCardMasuk,
 #gateLanding #gateCardMasuk:hover{
   border-color:#F2B134;
-  box-shadow:0 0 2px 1px #F2B134;
+  box-shadow:0 0 0 1px #F2B134;
 }
 #gateLanding #gateCardMasuk:hover{
-  box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11, 27, 43, 0.614);
+  box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11,27,43,0.35);
 }
 
 #gateLanding #gateCardFaq,
 #gateLanding #gateCardFaq:hover{
   border-color:#F2B134;
-  box-shadow:0 0 2px 1px #F2B134;
+  box-shadow:0 0 0 1px #F2B134;
 }
 #gateLanding #gateCardFaq:hover{
-  box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11, 27, 43, 0.712);
+  box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11,27,43,0.35);
 }
 
 #gateLanding #gateCardPortofolio,
 #gateLanding #gateCardPortofolio:hover{
   border-color:#F2B134;
-  box-shadow:0 0 2px 1px #F2B134;
+  box-shadow:0 0 0 1px #F2B134;
 }
 #gateLanding #gateCardPortofolio:hover{
   box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11,27,43,0.35);
 }
-
 
 #gateCardFaq .gate-card-icon{ background:#DDF4F0; }
 #gateCardFaq .gate-card-icon svg{ stroke:#0F766E; }
@@ -205,4 +203,136 @@
 @media (prefers-reduced-motion:reduce){
   #gateLanding .gate-card, #gateLanding .gate-cta{ transition:none; }
   #gateLanding .gate-card:hover{ transform:none; }
+}
+
+#loginGate #loginBox{
+  --ms-navy:#0B1B2B;
+  --ms-gold:#F2B134;
+  --ms-ink:#0B1B2B;
+  --ms-muted:#5A6B7F;
+  --ms-line:#E3E8F0;
+  --ms-field:#F3F5F9;
+  --ms-edge:#6B7C93; 
+  width:min(440px,100%);
+  background:#fff;
+  color:var(--ms-ink);
+  border:1px solid var(--ms-line);
+  border-radius:28px;
+  padding:36px 32px 32px;
+  box-shadow:0 30px 70px -30px rgba(0,0,0,0.65);
+  font-family:'Plus Jakarta Sans', var(--font-body), system-ui, sans-serif;
+}
+#loginGate #loginBox::before{ display:none; }
+
+#loginGate #loginBox .login-patch{
+  width:72px; height:72px; margin:0 auto 14px; border-radius:0; object-fit:contain;
+  display:block;
+}
+#loginGate #loginBox h2{
+  font-family:inherit; font-size:24px; font-weight:800; letter-spacing:-0.01em;
+  color:var(--ms-ink); text-align:center; margin:0 0 6px;
+}
+#loginGate #loginBox p.sub{
+  font-size:14px; line-height:1.55; color:var(--ms-muted);
+  text-align:center; margin:0 0 22px;
+}
+
+/* tombol kembali */
+#loginGate #loginBox .gate-back-btn,
+#loginGate #loginBox .login-sub-back{
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:36px; margin:0 0 10px; padding:0;
+  font-family:inherit; font-size:13px; font-weight:600; color:var(--ms-muted);
+  background:none; border:0; cursor:pointer;
+}
+#loginGate #loginBox .gate-back-btn:hover,
+#loginGate #loginBox .login-sub-back:hover{ color:#8A5A00; }
+
+/* chip kelas (diisi myspensab-home.js) */
+#loginGate #loginBox .login-class-chip{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:max-content; margin:0 auto 16px; padding:7px 16px;
+  border-radius:999px; background:#FFF3D6; color:#8A5A00;
+  font-size:13px; font-weight:800; letter-spacing:0.02em;
+}
+#loginGate #loginBox .login-class-chip[hidden]{ display:none; }
+
+/* tab Murid / Guru */
+#loginGate #loginBox .login-tabs{
+  background:var(--ms-field); border:1.5px solid var(--ms-edge);
+  border-radius:999px; padding:4px; margin-bottom:22px;
+}
+#loginGate #loginBox .login-tab{
+  font-family:inherit; font-size:14px; font-weight:600; color:var(--ms-muted);
+  min-height:42px; padding:0;
+}
+#loginGate #loginBox .login-tab:hover:not(.active){ color:var(--ms-ink); }
+#loginGate #loginBox .login-tab.active{
+  background:var(--ms-navy); color:#fff; font-weight:700;
+}
+
+/* field */
+#loginGate #loginBox .login-field{ margin-bottom:16px; }
+#loginGate #loginBox .login-field label{
+  font-family:inherit; font-size:12px; font-weight:700; letter-spacing:0.06em;
+  text-transform:uppercase; color:var(--ms-muted); margin-bottom:8px;
+}
+#loginGate #loginBox .login-field input,
+#loginGate #loginBox .login-field select,
+#loginGate #loginBox .login-field select#loginAdminAccount{
+  width:100%; min-height:50px; box-sizing:border-box;
+  background:var(--ms-field); color:var(--ms-ink);
+  border:1.5px solid var(--ms-edge); border-radius:14px;
+  padding:12px 16px; font-family:inherit; font-size:15px;
+  transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+#loginGate #loginBox .login-field input::placeholder{ color:#7A8899; }
+#loginGate #loginBox .login-field input:focus,
+#loginGate #loginBox .login-field select:focus{
+  outline:none; background:#fff; border-color:var(--ms-gold);
+  box-shadow:0 0 0 4px rgba(242,177,52,0.25);
+}
+
+/* tombol masuk */
+#loginGate #loginBox .login-submit{
+  width:100%; min-height:52px; margin-top:10px;
+  background:var(--ms-gold); color:var(--ms-ink);
+  border:1px solid var(--ms-gold); border-radius:14px;
+  font-family:inherit; font-size:16px; font-weight:800; cursor:pointer;
+  transition:transform .2s ease, background .2s ease;
+}
+#loginGate #loginBox .login-submit:hover{ background:#FFD27A; transform:translateY(-1px); }
+#loginGate #loginBox .login-submit:focus-visible,
+#loginGate #loginBox .login-tab:focus-visible,
+#loginGate #loginBox .gate-back-btn:focus-visible{ outline:3px solid var(--ms-gold); outline-offset:2px; }
+
+/* pesan error */
+#loginGate #loginBox .login-error{
+  font-family:inherit; font-size:13.5px; font-weight:600; color:#B42318;
+  text-align:center; margin:12px 0 0; min-height:18px;
+}
+
+/* pilihan jenis akses staf */
+#loginGate #loginBox .login-staff-choices p{
+  font-size:14px; color:var(--ms-muted);
+}
+#loginGate #loginBox .login-staff-choice{
+  min-height:50px; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800;
+  background:var(--ms-gold); color:var(--ms-ink); border:1px solid var(--ms-gold);
+}
+#loginGate #loginBox .login-staff-choice:hover{ background:#FFD27A; }
+#loginGate #loginBox .login-staff-choice.secondary{
+  background:#fff; color:var(--ms-ink); border:1.5px solid var(--ms-edge);
+}
+#loginGate #loginBox .login-staff-choice.secondary:hover{ border-color:var(--ms-navy); color:var(--ms-ink); }
+
+@media (max-width:640px){
+  #loginGate #loginBox{ padding:28px 20px 24px; border-radius:24px; }
+  #loginGate #loginBox h2{ font-size:22px; }
+}
+
+@media (max-width: 860px) {
+  .gate-hero-actions {
+    padding-inline: 12px; 
+  }
 }
