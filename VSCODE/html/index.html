@@ -24,6 +24,7 @@
   <link rel="apple-touch-icon" href="asset/spensablogo.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/myspensab-home.css">
+  <link rel="stylesheet" href="css/myspensab-dashboard.css">
 </head>
 <body>
 
@@ -32,98 +33,137 @@
 <div class="glow-orb two"></div>
 
 <div class="login-gate" id="loginGate">
-  <div class="gate-landing" id="gateLanding">
-    <div class="gate-hero">
-      <div class="gate-hero-inner">
-        <div class="gate-brand">
-          <img src="asset/spensablogo.png" alt="Logo MySpensab" class="login-patch">
-          <span class="gate-brand-name">MySpensab</span>
-        </div>
-        <span class="gate-pill">Portal warga sekolah</span>
-        <h2 class="gate-title">Satu pintu untuk semua urusan sekolah.</h2>
-        <p class="gate-lead">Absensi, pengumuman, dan jadwal ada di satu tempat. Masuk dengan akun kamu, lalu lanjutkan.</p>
-        <div class="gate-hero-actions">
-          <button type="button" class="gate-cta" data-gate-target="gateCardMasuk">Masuk ke akun</button>
-          <button type="button" class="gate-cta secondary" data-gate-target="gateCardFaq">Cara pakai</button>
+<div class="gate-landing ds" id="gateLanding">
+  <div class="ds-shell">
+
+    <aside class="ds-side">
+      <div class="ds-brand">
+        <img src="asset/spensablogo.png" alt="Logo MySpensab" class="login-patch">
+        <span>MySpensab</span>
+      </div>
+
+      <nav class="ds-nav">
+        <button type="button" class="ds-nav-item active" data-ds-top>
+          <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Beranda
+        </button>
+        <button type="button" class="ds-nav-item" data-ds-click="gateCardMasuk">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Masuk
+        </button>
+        <button type="button" class="ds-nav-item" data-ds-click="gateCardFaq">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 113.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>FAQ
+        </button>
+        <a class="ds-nav-item" href="https://siswa.pijarsekolah.id/smpnegeri1abiansemal/login" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Pijar
+        </a>
+        <a class="ds-nav-item" href="https://script.google.com/macros/s/AKfycbxIz3ir3nN7oYgWcQTruH94RzUXMK9HppfIlHDImJYrat0BxuIE3RgqZ29BuXqEVT5moA/exec" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Pengaduan
+        </a>
+        <button type="button" class="ds-nav-item" data-ds-click="gateCardPortofolio">
+          <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Portofolio
+        </button>
+      </nav>
+
+      <div class="ds-school">
+        <b>SMP Negeri 1 Abiansemal</b>
+        <small>Berbudaya • Berkarakter • Berprestasi</small>
+      </div>
+    </aside>
+
+    <main class="ds-main">
+      <div class="ds-topbar">
+        <label class="ds-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="search" id="dsSearch" placeholder="Cari fitur di sini..." autocomplete="off">
+        </label>
+        <div class="ds-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4.5"/><path d="M3.5 21c0-4.4 3.8-7 8.5-7s8.5 2.6 8.5 7z"/></svg>
         </div>
       </div>
-    </div>
 
-    <div class="gate-menu">
-      <div class="gate-menu-head">
-        <h3>Mau ke mana hari ini?</h3>
+      <section class="ds-hero">
+        <div class="ds-hero-inner">
+          <h1>Satu pintu untuk semua urusan <span>sekolah.</span></h1>
+          <p>Absensi, pengumuman, dan jadwal ada di satu tempat. Masuk dengan akun kamu, lalu lanjutkan.</p>
+          <div class="ds-actions">
+            <button type="button" class="gate-cta ds-btn" data-gate-target="gateCardMasuk">
+              <svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M14 6l6 6-6 6"/></svg>Masuk ke akun
+            </button>
+            <button type="button" class="gate-cta secondary ds-btn secondary" data-gate-target="gateCardFaq">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14.5c2.2.6 3.5 2.4 3.5 5.5"/></svg>Cara pakai
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="ds-sec-title">
+        <h2>Mau ke mana hari ini?</h2>
         <p>Pilih menu untuk melanjutkan.</p>
       </div>
 
-      <div class="gate-card-grid cols-3">
-        <div class="gate-card" id="gateCardMasuk" role="button" tabindex="0">
-          <div class="gate-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#f2b705" stroke-width="1.6" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
-          </div>
+      <div class="ds-grid" id="dsGrid">
+
+        <div class="gate-card ds-card" id="gateCardMasuk" role="button" tabindex="0">
+          <div class="ds-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></div>
           <h3>Masuk</h3>
           <p>Akses absensi, pengumuman, dan jadwal dengan akun kamu.</p>
-          <span class="gate-card-link">Buka halaman masuk →</span>
+          <span class="ds-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>
         </div>
-        <div class="gate-card" id="gateCardFaq" role="button" tabindex="0">
-          <div class="gate-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#2fd4c4" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 113.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>
-          </div>
+
+        <div class="gate-card ds-card" id="gateCardFaq" role="button" tabindex="0">
+          <div class="ds-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 113.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg></div>
           <h3>FAQ</h3>
           <p>Jawaban untuk pertanyaan yang sering muncul dan panduan memakai website ini.</p>
-          <span class="gate-card-link">Baca panduan →</span>
+          <span class="ds-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>
         </div>
-        <a class="gate-card" id="gateCardPijar" href="https://siswa.pijarsekolah.id/smpnegeri1abiansemal/login" target="_blank" rel="noopener noreferrer">
-          <div class="gate-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M2 4h6a4 4 0 014 4v12a3 3 0 00-3-3H2z"/>
-              <path d="M22 4h-6a4 4 0 00-4 4v12a3 3 0 013-3h7z"/>
-            </svg>
-          </div>
+
+        <a class="gate-card ds-card" id="gateCardPijar" href="https://siswa.pijarsekolah.id/smpnegeri1abiansemal/login" target="_blank" rel="noopener noreferrer">
+          <div class="ds-icon"><svg viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 014 4v12a3 3 0 00-3-3H2z"/><path d="M22 4h-6a4 4 0 00-4 4v12a3 3 0 013-3h7z"/></svg></div>
           <h3>Pijar</h3>
           <p>Buka portal Pijar Sekolah SMP Negeri 1 Abiansemal.</p>
-          <span class="gate-card-link">Buka Pijar →</span>
+          <span class="ds-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>
         </a>
 
-        <a class="gate-card" id="gateCardPengaduan" href="https://script.google.com/macros/s/AKfycbxIz3ir3nN7oYgWcQTruH94RzUXMK9HppfIlHDImJYrat0BxuIE3RgqZ29BuXqEVT5moA/exec" target="_blank" rel="noopener noreferrer">
-          <div class="gate-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-            </svg>
-          </div>
+        <a class="gate-card ds-card" id="gateCardPengaduan" href="https://script.google.com/macros/s/AKfycbxIz3ir3nN7oYgWcQTruH94RzUXMK9HppfIlHDImJYrat0BxuIE3RgqZ29BuXqEVT5moA/exec" target="_blank" rel="noopener noreferrer">
+          <div class="ds-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 10h8M8 13h5"/></svg></div>
           <h3>Pengaduan</h3>
           <p>Sampaikan pengaduan lewat website pengaduan sekolah.</p>
-          <span class="gate-card-link">Buka pengaduan →</span>
+          <span class="ds-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>
         </a>
-        <div class="gate-card" id="gateCardPortofolio" role="button" tabindex="0">
-          <div class="gate-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#f2b705" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>
-          </div>
+
+        <div class="gate-card ds-card" id="gateCardPortofolio" role="button" tabindex="0">
+          <div class="ds-icon"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
           <h3>Portofolio</h3>
           <p>Profil, struktur, dan dokumentasi kegiatan yang sudah dijalani.</p>
-          <span class="gate-card-link">Lihat portofolio →</span>
+          <span class="ds-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>
         </div>
-      </div>
 
-      <div class="gate-after">
-        <strong>Setelah masuk, kamu bisa:</strong>
-        <ul>
-          <li>Absensi</li>
-          <li>Pengumuman</li>
-          <li>Jadwal</li>
-          <li>Fitur lainnya</li>
-        </ul>
       </div>
-    </div>
-
-    <div class="gate-foot">
-      <div class="gate-foot-inner">
-        <span>MySpensab · SMP Negeri 1 Abiansemal</span>
-        <span>Butuh bantuan? Hubungi admin sekolah.</span>
-      </div>
-    </div>
+    </main>
   </div>
 
-  <!-- Taruh di dalam <body>, bebas posisinya (overlay fixed). -->
+  <script>
+  (function(){
+    var root = document.getElementById('gateLanding');
+    if(!root) return;
+    root.querySelectorAll('[data-ds-click]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var t = document.getElementById(btn.getAttribute('data-ds-click'));
+        if(t) t.click();
+      });
+    });
+    var top = root.querySelector('[data-ds-top]');
+    if(top) top.addEventListener('click', function(){ root.scrollIntoView({behavior:'smooth'}); });
+    var input = document.getElementById('dsSearch');
+    var cards = root.querySelectorAll('#dsGrid > *');
+    if(input) input.addEventListener('input', function(){
+      var q = input.value.trim().toLowerCase();
+      cards.forEach(function(c){
+        c.style.display = (!q || c.textContent.toLowerCase().indexOf(q) > -1) ? '' : 'none';
+      });
+    });
+  })();
+  </script>
+</div>  
 <section id="classSelection" class="class-selection" role="dialog" aria-modal="true" aria-labelledby="classSelectionTitle" hidden>
   <div class="class-selection-inner">
 
