@@ -101,8 +101,17 @@
 #gateLanding .gate-card-grid,
 #gateLanding .gate-card-grid.cols-3{
   display:grid; gap:24px;
-  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns:repeat(3, 1fr);
 }
+@media (max-width:900px){
+  #gateLanding .gate-card-grid,
+  #gateLanding .gate-card-grid.cols-3{ grid-template-columns:repeat(2, 1fr); }
+}
+@media (max-width:640px){
+  #gateLanding .gate-card-grid,
+  #gateLanding .gate-card-grid.cols-3{ grid-template-columns:1fr; }
+}
+
 #gateLanding .gate-card{
   background:#fff; border:1px solid var(--ms-line); border-radius:24px;
   padding:32px; gap:16px; text-align:left;
@@ -160,12 +169,31 @@
   box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11,27,43,0.35);
 }
 
+#gateLanding #gateCardPijar,
+#gateLanding #gateCardPijar:hover,
+#gateLanding #gateCardPengaduan,
+#gateLanding #gateCardPengaduan:hover{
+  border-color:#F2B134;
+  box-shadow:0 0 0 1px #F2B134;
+}
+#gateLanding #gateCardPijar:hover,
+#gateLanding #gateCardPengaduan:hover{
+  box-shadow:0 0 15px 1px #F2B134, 0 18px 40px -22px rgba(11,27,43,0.35);
+}
+
 #gateCardFaq .gate-card-icon{ background:#DDF4F0; }
 #gateCardFaq .gate-card-icon svg{ stroke:#0F766E; }
 #gateCardFaq .gate-card-link{ color:#0F766E; }
 #gateCardPortofolio .gate-card-icon{ background:#E4E9FB; }
 #gateCardPortofolio .gate-card-icon svg{ stroke:#3949AB; }
 #gateCardPortofolio .gate-card-link{ color:#3949AB; }
+#gateCardPijar .gate-card-icon{ background:#DDF4F0; }
+#gateCardPijar .gate-card-icon svg{ stroke:#0F766E; }
+#gateCardPijar .gate-card-link{ color:#0F766E; }
+
+#gateCardPengaduan .gate-card-icon{ background:#FDE8E4; }
+#gateCardPengaduan .gate-card-icon svg{ stroke:#B42318; }
+#gateCardPengaduan .gate-card-link{ color:#B42318; }
 
 /* strip "setelah masuk" */
 #gateLanding .gate-after{
@@ -334,5 +362,198 @@
 @media (max-width: 860px) {
   .gate-hero-actions {
     padding-inline: 12px; 
+  }
+}
+
+/* ===== LIQUID GLASS v4 ===== */
+
+/* ---------- HERO: pill dan tombol (gaya gambar 1) ---------- */
+#gateLanding .gate-pill{
+  background:rgba(43,179,163,0.10);
+  -webkit-backdrop-filter:blur(16px) saturate(160%);
+  backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid rgba(43,179,163,0.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#gateLanding .gate-cta{
+  border-radius:999px;
+  background:linear-gradient(180deg, rgba(255,205,110,0.95), rgba(242,177,52,0.82));
+  border:1px solid rgba(255,255,255,0.40);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.60), 0 10px 24px -12px rgba(242,177,52,0.7);
+}
+#gateLanding .gate-cta:hover{
+  background:linear-gradient(180deg, rgba(255,220,140,1), rgba(242,177,52,0.92));
+}
+#gateLanding .gate-cta.secondary{
+  border-radius:999px;
+  background:rgba(255,255,255,0.08);
+  -webkit-backdrop-filter:blur(16px) saturate(160%);
+  backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid rgba(255,255,255,0.28);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);
+  color:#fff;
+}
+#gateLanding .gate-cta.secondary:hover{
+  background:rgba(255,255,255,0.16);
+  border-color:rgba(255,255,255,0.5);
+}
+
+/* ---------- KARTU: dasar kaca, sudut lengkung ---------- */
+#gateLanding #gateCardMasuk,
+#gateLanding #gateCardFaq,
+#gateLanding #gateCardPijar,
+#gateLanding #gateCardPengaduan,
+#gateLanding #gateCardPortofolio{
+  position:relative;
+  overflow:hidden;
+  border-radius:32px;
+  -webkit-backdrop-filter:blur(20px) saturate(170%);
+  backdrop-filter:blur(20px) saturate(170%);
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+
+/* kilau halus di bagian atas kartu */
+#gateLanding #gateCardMasuk::before,
+#gateLanding #gateCardFaq::before,
+#gateLanding #gateCardPijar::before,
+#gateLanding #gateCardPengaduan::before,
+#gateLanding #gateCardPortofolio::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:50%;
+  border-radius:32px 32px 0 0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0));
+  pointer-events:none;
+}
+
+/* ---------- WARNA: satu kartu satu warna ---------- */
+#gateLanding #gateCardMasuk{
+  background:linear-gradient(150deg, rgba(104,72,12,0.94), rgba(58,40,8,0.92));
+  border:1px solid rgba(242,177,52,0.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 36px -16px rgba(242,177,52,0.40);
+}
+#gateLanding #gateCardFaq{
+  background:linear-gradient(150deg, rgba(16,92,88,0.94), rgba(10,52,52,0.92));
+  border:1px solid rgba(43,179,163,0.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 36px -16px rgba(43,179,163,0.40);
+}
+#gateLanding #gateCardPijar{
+  background:linear-gradient(150deg, rgba(28,62,128,0.94), rgba(16,36,80,0.92));
+  border:1px solid rgba(96,150,240,0.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 36px -16px rgba(96,150,240,0.40);
+}
+#gateLanding #gateCardPengaduan{
+  background:linear-gradient(150deg, rgba(124,36,56,0.94), rgba(72,20,34,0.92));
+  border:1px solid rgba(240,100,120,0.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 36px -16px rgba(240,100,120,0.40);
+}
+#gateLanding #gateCardPortofolio{
+  background:linear-gradient(150deg, rgba(62,50,140,0.94), rgba(36,28,86,0.92));
+  border:1px solid rgba(140,130,240,0.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 36px -16px rgba(140,130,240,0.40);
+}
+
+/* hover: naik sedikit, tepi makin terang */
+#gateLanding #gateCardMasuk:hover,
+#gateLanding #gateCardFaq:hover,
+#gateLanding #gateCardPijar:hover,
+#gateLanding #gateCardPengaduan:hover,
+#gateLanding #gateCardPortofolio:hover{
+  transform:translateY(-5px);
+  border-color:rgba(255,255,255,0.55);
+}
+
+/* ---------- KOTAK IKON: kaca terang, lengkung ---------- */
+#gateLanding #gateCardMasuk .gate-card-icon,
+#gateLanding #gateCardFaq .gate-card-icon,
+#gateLanding #gateCardPijar .gate-card-icon,
+#gateLanding #gateCardPengaduan .gate-card-icon,
+#gateLanding #gateCardPortofolio .gate-card-icon{
+  width:56px; height:56px;
+  border-radius:20px;
+  background:linear-gradient(150deg, rgba(255,255,255,0.92), rgba(255,255,255,0.58));
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.80);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1), 0 8px 18px -8px rgba(0,0,0,0.45);
+}
+#gateLanding #gateCardMasuk .gate-card-icon svg{ stroke:#B26A00; }
+#gateLanding #gateCardFaq .gate-card-icon svg{ stroke:#0F766E; }
+#gateLanding #gateCardPijar .gate-card-icon svg{ stroke:#1D4ED8; }
+#gateLanding #gateCardPengaduan .gate-card-icon svg{ stroke:#C2331F; }
+#gateLanding #gateCardPortofolio .gate-card-icon svg{ stroke:#4338CA; }
+
+/* ---------- TEKS ---------- */
+#gateLanding #gateCardMasuk h3,
+#gateLanding #gateCardFaq h3,
+#gateLanding #gateCardPijar h3,
+#gateLanding #gateCardPengaduan h3,
+#gateLanding #gateCardPortofolio h3{ color:#FFFFFF; }
+
+#gateLanding #gateCardMasuk p,
+#gateLanding #gateCardFaq p,
+#gateLanding #gateCardPijar p,
+#gateLanding #gateCardPengaduan p,
+#gateLanding #gateCardPortofolio p{ color:rgba(255,255,255,0.78); }
+
+#gateLanding #gateCardMasuk .gate-card-link{ color:#FFD27A; }
+#gateLanding #gateCardFaq .gate-card-link{ color:#7EE7D8; }
+#gateLanding #gateCardPijar .gate-card-link{ color:#9CC4FF; }
+#gateLanding #gateCardPengaduan .gate-card-link{ color:#FDA4AF; }
+#gateLanding #gateCardPortofolio .gate-card-link{ color:#B4BCFF; }
+
+/* ---------- STRIP "Setelah masuk" ---------- */
+#gateLanding .gate-after{
+  border-radius:32px;
+  background:rgba(11,27,43,0.92);
+  border:1px solid rgba(255,255,255,0.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 14px 34px -16px rgba(11,27,43,0.5);
+}
+#gateLanding .gate-after li{
+  background:rgba(255,255,255,0.10);
+  border:1px solid rgba(255,255,255,0.18);
+}
+
+/* kartu <a> tanpa garis bawah */
+#gateLanding a.gate-card{
+  text-decoration:none;
+  color:inherit;
+}
+
+/* ===== TATA LETAK 5 KARTU: satu baris ===== */
+#gateLanding .gate-menu{
+  max-width:1400px;
+}
+#gateLanding .gate-card-grid,
+#gateLanding .gate-card-grid.cols-3{
+  grid-template-columns:repeat(5, 1fr);
+  gap:18px;
+}
+#gateLanding .gate-card{
+  padding:24px 20px;
+}
+#gateLanding .gate-card h3{ font-size:19px; }
+#gateLanding .gate-card p{ font-size:14px; }
+
+@media (max-width:1200px){
+  #gateLanding .gate-card-grid,
+  #gateLanding .gate-card-grid.cols-3{
+    grid-template-columns:repeat(6, 1fr);
+  }
+  #gateLanding .gate-card-grid > .gate-card{ grid-column:span 2; }
+  /* baris kedua (2 kartu) dipusatkan */
+  #gateLanding .gate-card-grid > .gate-card:nth-child(4){ grid-column:2 / span 2; }
+  #gateLanding .gate-card-grid > .gate-card:nth-child(5){ grid-column:4 / span 2; }
+}
+@media (max-width:700px){
+  #gateLanding .gate-card-grid,
+  #gateLanding .gate-card-grid.cols-3{
+    grid-template-columns:1fr;
+  }
+  #gateLanding .gate-card-grid > .gate-card,
+  #gateLanding .gate-card-grid > .gate-card:nth-child(4),
+  #gateLanding .gate-card-grid > .gate-card:nth-child(5){
+    grid-column:auto;
   }
 }

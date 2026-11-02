@@ -1234,9 +1234,15 @@
 }
 .gate-landing p.sub{ color:var(--text-mid); font-size:13.5px; margin-bottom:32px; }
 
-.gate-card-grid.cols-3{ grid-template-columns:repeat(3,1fr); }
-@media (max-width:720px){ .gate-card-grid.cols-3{ grid-template-columns:1fr; } }
+.gate-card-grid.cols-3{ grid-template-columns:repeat(4,1fr); }
+@media (max-width:960px){ .gate-card-grid.cols-3{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:520px){ .gate-card-grid.cols-3{ grid-template-columns:1fr; } }
 .gate-card-icon svg{ width:28px; height:28px; }
+a.gate-card{
+    text-decoration:none;
+    color:inherit;
+}
+a.gate-card:hover{ text-decoration:none; }
 
 .login-tabs{
     display:flex; gap:6px; background:var(--bg-void); border:1px solid var(--line-soft);
